@@ -48,6 +48,9 @@ pub mod sync;
 #[cfg(feature = "experimental-sliding-sync")]
 pub mod sliding_sync;
 
+#[cfg(feature = "experimental-widgets")]
+pub mod widgets;
+
 #[cfg(feature = "e2e-encryption")]
 pub mod encryption;
 

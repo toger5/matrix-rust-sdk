@@ -1470,6 +1470,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-widget"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "matrix-sdk",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "extension-trait"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
