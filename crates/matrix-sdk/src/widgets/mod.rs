@@ -16,3 +16,4 @@
 #![doc = include_str!("README.md")]
 
 pub mod widget_driver;
+pub mod widget_request;
