@@ -3,6 +3,8 @@ use std::sync::Arc;
 use ruma::events::room::message::RoomMessageEventContent;
 
 use super::{
+    widget_client_driver::WidgetClientDriver,
+    widget_matrix_driver::WidgetMatrixDriver,
     widget_driver::WidgetDriver,
     widget_message::{FromWidgetAction, WidgetMessageDirection, WidgetMessageRequest},
 };
@@ -12,7 +14,7 @@ pub trait WidgetMessageHandler {
     fn handle_read_events(&self, request: WidgetMessageRequest);
     fn handle_unimplemented_request(&self, request: WidgetMessageRequest);
 }
-impl WidgetMessageHandler for WidgetDriver {
+impl<CD: WidgetClientDriver> WidgetMessageHandler for WidgetDriver<CD> {
     // pub async fn handle(&self, message: &str){
     //     let request = WidgetMessageRequest{
     //         api: WidgetMessageDirection::FromWidget,
@@ -38,9 +40,9 @@ impl WidgetMessageHandler for WidgetDriver {
     fn handle_content_loaded(&self, request: WidgetMessageRequest) {}
     fn handle_read_events(&self, request: WidgetMessageRequest) {}
     fn handle_unimplemented_request(&self, request: WidgetMessageRequest) {
-        let delegate = Arc::clone(&self.toWidgetDelegate);
-        if let Some(delegate) = delegate.read().unwrap().as_ref() {
-            //delegate.to_widget(request.)
-        }
+        // let delegate = Arc::clone(&self.toWidgetDelegate);
+        // if let Some(delegate) = delegate.read().unwrap().as_ref() {
+        //     //delegate.to_widget(request.)
+        // }
     }
 }

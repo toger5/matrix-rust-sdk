@@ -1,17 +1,24 @@
 use std::collections::HashSet;
+// use uuid::Uuid;
 
 use futures_util::future::Join;
 use ruma::events::room::message::SyncRoomMessageEvent;
 
-use crate::{room::{Joined, Room}, Client};
+use crate::{
+    room::{Joined, Room},
+    widgets::widget_message::{
+        ToWidgetAction, WidgetMessage, WidgetMessageDirection, WidgetMessageRequest, WidgetAction,
+    },
+    Client,
+};
 
-use super::{widget_driver::Capability};
+use super::widget_driver::Capability;
 
-enum ReadDirection{
+enum ReadDirection {
     Forward,
-    Backwards
+    Backwards,
 }
-pub trait WidgetMatrixDriver{
+pub trait WidgetMatrixDriver {
     /**
      * Verifies the widget's requested capabilities, returning the ones
      * it is approved to use. Mutating the requested capabilities will
@@ -40,12 +47,7 @@ pub trait WidgetMatrixDriver{
      * details of that event.
      * @throws Rejected when the event could not be sent.
      */
-    fn send_event(
-        eventType: &str,
-        content: serde_json::Value,
-        stateKey: &str,
-        roomId: &str,
-    );
+    fn send_event(eventType: &str, content: serde_json::Value, stateKey: &str, roomId: &str);
 
     /**
      * Sends a to-device event. The widget API will have already verified that the widget
@@ -59,7 +61,7 @@ pub trait WidgetMatrixDriver{
     fn send_to_device(
         eventType: &str,
         encrypted: bool,
-        contentMap: serde_json::Value /*{ [userId: string]: { [deviceId: string]: object } }*/,
+        contentMap: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
     );
 
     /**
@@ -77,12 +79,7 @@ pub trait WidgetMatrixDriver{
      * to look within, possibly containing Symbols.AnyRoom to denote all known rooms.
      * @returns {Promise<IRoomEvent[]>} Resolves to the room events, or an empty array.
      */
-    fn read_room_events(
-        eventType: &str,
-        msgtype: &str,
-        limit: u32,
-        roomIds:  [&str],
-    );
+    fn read_room_events(eventType: &str, msgtype: &str, limit: u32, roomIds: Vec<String>);
 
     /**
      * Reads all events of the given type, and optionally state key (if applicable/defined),
@@ -99,12 +96,7 @@ pub trait WidgetMatrixDriver{
      * to look within, possibly containing Symbols.AnyRoom to denote all known rooms.
      * @returns {Promise<IRoomEvent[]>} Resolves to the state events, or an empty array.
      */
-    fn read_state_events(
-        eventType: &str,
-        stateKey:  &str,
-        limit: u32,
-        roomIds: [&str],
-    );
+    fn read_state_events(eventType: &str, stateKey: &str, limit: u32, roomIds: Vec<String>);
 
     /**
      * Reads all events that are related to a given event. The widget API will
@@ -141,7 +133,6 @@ pub trait WidgetMatrixDriver{
         direction: ReadDirection,
     );
 
-
     /// Asks the user for permission to validate their identity through OpenID Connect. The
     /// interface for this function is an observable which accepts the state machine of the
     /// OIDC exchange flow. For example, if the client/user blocks the request then it would
@@ -165,30 +156,36 @@ pub trait WidgetMatrixDriver{
     /// @param searchTerm The term to search for.
     /// @param limit The maximum number of results to return. If not supplied, the
     /// @returns Resolves to the search results.
-    fn search_user_directory(
-        searchTerm: &str,
-        limit: u32,
-    );
+    fn search_user_directory(searchTerm: &str, limit: u32);
 }
 
-pub struct ActualMatrixClientDriver {
+#[derive(Clone)]
+pub struct ActualWidgetMatrixDriver {
     room: Joined,
 }
-impl ActualMatrixClientDriver {
-    pub fn new(room: Joined) -> Self{
-        let matrix_driver = ActualMatrixClientDriver{room};
-        let driver_room = matrix_driver.room.clone().unwrap();
+impl ActualWidgetMatrixDriver {
+    pub fn new(room: Joined, widget_id: String) -> Self {
+        let matrix_driver = ActualWidgetMatrixDriver { room };
+        let driver_room = matrix_driver.room.clone();
         let room_message_callback = |ev: SyncRoomMessageEvent, room: Room, client: Client| async move {
             // Common usage: Room event plus room and client.
-            println!("WidgetDriver handle event: {:?}", ev);
-            matrix_driver.room_message_handler.handle(ev, room, client, matrix_driver.to_widget_delegate.clone());
+            println!("Do sth with the message: {:?}", ev);
+            // let message = WidgetMessage::Request(WidgetMessageRequest {
+            //     api_direction: WidgetMessageDirection::ToWidget,
+            //     request_id: "1234_fake_uuid_1234".to_owned()/*TODO make that the correct uuid it should be */,
+            //     action: WidgetAction::ToWidget(ToWidgetAction::SendEvent),
+            //     widget_id: widget_id,
+            //     data: serde_json::json!({"example":"event data"}),
+            // });
+            // // tx.send(message)
+            // println!("send message: (no yet implemetned):{}", serde_json::to_string(&message).expect("should have been serilizable"));
+            // // matrix_driver.room_message_handler.handle(ev, room, client, matrix_driver.to_widget_delegate.clone());
         };
-        driver_room.inner.client.add_event_handler(matrix_driver.room_message_handler);
+        driver_room.inner.client.add_event_handler(room_message_callback);
         matrix_driver
     }
-    
 }
-impl WidgetMatrixDriver for ActualMatrixClientDriver {
+impl WidgetMatrixDriver for ActualWidgetMatrixDriver {
     fn ask_open_id(/*observer: SimpleObservable<IOpenIDUpdate>*/) {
         unimplemented!()
     }
@@ -196,56 +193,37 @@ impl WidgetMatrixDriver for ActualMatrixClientDriver {
         unimplemented!()
     }
     fn read_event_relations(
-            eventId: &str,
-            roomId: &str,
-            relationType: &str,
-            eventType: &str,
-            from: &str,
-            to: &str,
-            limit: u32,
-            direction: ReadDirection,
-        ) {
+        eventId: &str,
+        roomId: &str,
+        relationType: &str,
+        eventType: &str,
+        from: &str,
+        to: &str,
+        limit: u32,
+        direction: ReadDirection,
+    ) {
         unimplemented!()
     }
-    fn read_room_events(
-            eventType: &str,
-            msgtype: &str,
-            limit: u32,
-            roomIds:  [&str],
-        ) {
+    fn read_room_events(eventType: &str, msgtype: &str, limit: u32, roomIds: Vec<String>) {
         unimplemented!()
     }
-    fn read_state_events(
-            eventType: &str,
-            stateKey:  &str,
-            limit: u32,
-            roomIds: [&str],
-        ) {
+    fn read_state_events(eventType: &str, stateKey: &str, limit: u32, roomIds: Vec<String>) {
         unimplemented!()
     }
-    fn search_user_directory(
-            searchTerm: &str,
-            limit: u32,
-        ) {
+    fn search_user_directory(searchTerm: &str, limit: u32) {
         unimplemented!()
     }
-    fn send_event(
-            eventType: &str,
-            content: serde_json::Value,
-            stateKey: &str,
-            roomId: &str,
-        ) {
+    fn send_event(eventType: &str, content: serde_json::Value, stateKey: &str, roomId: &str) {
         unimplemented!()
     }
     fn send_to_device(
-            eventType: &str,
-            encrypted: bool,
-            contentMap: serde_json::Value /*{ [userId: string]: { [deviceId: string]: object } }*/,
-        ) {
+        eventType: &str,
+        encrypted: bool,
+        contentMap: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
+    ) {
         unimplemented!()
     }
     fn validate_capabilities(requested: HashSet<Capability>) {
         unimplemented!()
     }
-
 }

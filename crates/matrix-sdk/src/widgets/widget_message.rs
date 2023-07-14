@@ -1,20 +1,22 @@
-use http::response;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+#[derive(Serialize, Deserialize, Debug)]
 
 pub enum WidgetMessageDirection {
     ToWidget,
     FromWidget,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+
 pub enum WidgetAction {
+    #[serde(rename = "fromWidget")]
     FromWidget(FromWidgetAction),
+    #[serde(rename = "toWidget")]
     ToWidget(ToWidgetAction),
 }
-impl WidgetAction {
-    pub fn as_str(&self){
 
-    }
-}
 impl WidgetMessageDirection {
     fn as_str(&self) -> &'static str {
         match self {
@@ -23,156 +25,137 @@ impl WidgetMessageDirection {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+
 pub enum ToWidgetAction {
+    #[serde(rename = "supported_api_versions")]
     SupportedApiVersions,
+    #[serde(rename = "capabilities")]
     Capabilities,
+    #[serde(rename = "notify_capabilities")]
     NotifyCapabilities,
+    #[serde(rename = "screenshot")]
     TakeScreenshot,
+    #[serde(rename = "visibility")]
     UpdateVisibility,
+    #[serde(rename = "openid_credentials")]
     OpenIDCredentials,
+    #[serde(rename = "widget_config")]
     WidgetConfig,
+    #[serde(rename = "close_modal")]
     CloseModalWidget,
+    #[serde(rename = "button_clicked")]
     ButtonClicked,
+    #[serde(rename = "send_event")]
     SendEvent,
+    #[serde(rename = "send_to_device")]
     SendToDevice,
+    #[serde(rename = "update_turn_servers")]
     UpdateTurnServers,
 }
-impl ToWidgetAction {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ToWidgetAction::SupportedApiVersions => "supported_api_versions",
-            ToWidgetAction::Capabilities => "capabilities",
-            ToWidgetAction::NotifyCapabilities => "notify_capabilities",
-            ToWidgetAction::TakeScreenshot => "screenshot",
-            ToWidgetAction::UpdateVisibility => "visibility",
-            ToWidgetAction::OpenIDCredentials => "openid_credentials",
-            ToWidgetAction::WidgetConfig => "widget_config",
-            ToWidgetAction::CloseModalWidget => "close_modal",
-            ToWidgetAction::ButtonClicked => "button_clicked",
-            ToWidgetAction::SendEvent => "send_event",
-            ToWidgetAction::SendToDevice => "send_to_device",
-            ToWidgetAction::UpdateTurnServers => "update_turn_servers",
-        }
-    }
-}
+
+#[derive(Serialize, Deserialize, Debug)]
 
 pub enum FromWidgetAction {
+    #[serde(rename = "supported_api_versions")]
     SupportedApiVersions,
+    #[serde(rename = "content_loaded")]
     ContentLoaded,
+    #[serde(rename = "m.sticker")]
     SendSticker,
+    #[serde(rename = "set_always_on_screen")]
     UpdateAlwaysOnScreen,
+    #[serde(rename = "get_openid")]
     GetOpenIDCredentials,
+    #[serde(rename = "close_modal")]
     CloseModalWidget,
+    #[serde(rename = "open_modal")]
     OpenModalWidget,
+    #[serde(rename = "set_button_enabled")]
     SetModalButtonEnabled,
+    #[serde(rename = "send_event")]
     SendEvent,
+    #[serde(rename = "send_to_device")]
     SendToDevice,
+    #[serde(rename = "watch_turn_servers")]
     WatchTurnServers,
+    #[serde(rename = "unwatch_turn_servers")]
     UnwatchTurnServers,
 
     /**
      * @deprecated It is not recommended to rely on this existing - it can be removed without notice.
      */
+    #[serde(rename = "org.matrix.msc2876.read_events")]
     MSC2876ReadEvents,
 
     /**
      * @deprecated It is not recommended to rely on this existing - it can be removed without notice.
      */
+    #[serde(rename = "org.matrix.msc2931.navigate")]
     MSC2931Navigate,
 
     /**
      * @deprecated It is not recommended to rely on this existing - it can be removed without notice.
      */
+    #[serde(rename = "org.matrix.msc2974.request_capabilities")]
     MSC2974RenegotiateCapabilities,
 
     /**
      * @deprecated It is not recommended to rely on this existing - it can be removed without notice.
      */
+    #[serde(rename = "org.matrix.msc3869.read_relations")]
     MSC3869ReadRelations,
 
     /**
      * @deprecated It is not recommended to rely on this existing - it can be removed without notice.
      */
+    #[serde(rename = "org.matrix.msc3973.user_directory_search")]
     MSC3973UserDirectorySearch,
 }
-impl FromWidgetAction {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FromWidgetAction::SupportedApiVersions => "supported_api_versions",
-            FromWidgetAction::ContentLoaded => "content_loaded",
-            FromWidgetAction::SendSticker => "m.sticker",
-            FromWidgetAction::UpdateAlwaysOnScreen => "set_always_on_screen",
-            FromWidgetAction::GetOpenIDCredentials => "get_openid",
-            FromWidgetAction::CloseModalWidget => "close_modal",
-            FromWidgetAction::OpenModalWidget => "open_modal",
-            FromWidgetAction::SetModalButtonEnabled => "set_button_enabled",
-            FromWidgetAction::SendEvent => "send_event",
-            FromWidgetAction::SendToDevice => "send_to_device",
-            FromWidgetAction::WatchTurnServers => "watch_turn_servers",
-            FromWidgetAction::UnwatchTurnServers => "unwatch_turn_servers",
-            FromWidgetAction::MSC2876ReadEvents => "org.matrix.msc2876.read_events",
-            FromWidgetAction::MSC2931Navigate => "org.matrix.msc2931.navigate",
-            FromWidgetAction::MSC2974RenegotiateCapabilities => {
-                "org.matrix.msc2974.request_capabilities"
-            }
-            FromWidgetAction::MSC3869ReadRelations => "org.matrix.msc3869.read_relations",
-            FromWidgetAction::MSC3973UserDirectorySearch => {
-                "org.matrix.msc3973.user_directory_search"
-            }
-        }
-    }
-}
 
-
+#[derive(Serialize, Deserialize, Debug)]
 pub enum WidgetMessage {
     Request(WidgetMessageRequest),
-    Response(WidgetMessageResponse)
+    Response(WidgetMessageResponse),
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+
 pub struct WidgetMessageRequest {
-    pub api: WidgetMessageDirection,
+    #[serde(rename = "api")]
+    pub api_direction: WidgetMessageDirection,
+    #[serde(rename = "requestId")]
     pub request_id: String,
+    #[serde(rename = "action")]
     pub action: WidgetAction,
+    #[serde(rename = "widgetId")]
     pub widget_id: String,
-    pub data: serde_json::Value,
+    #[serde(rename = "data")]
+    pub data: Value,
 }
-
-impl WidgetMessageRequest {
-    fn from(request: Value) -> Option<Self> {
-        None
-    }
-    fn as_value(&self) -> serde_json::Value {
-        serde_json::json!({
-            "api": self.api.as_str(),
-            "request_id": &self.request_id,
-            "action": &self.action.as_str(),
-            "widget_id": &self.widget_id
-        })
-    }
-}
-
-pub struct WidgetMessageResponse {
+// serelize tags
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WidgetMessageResponse<T> {
     request: WidgetMessageRequest,
-    response: serde_json::Value,
+    response: T,
 }
-pub impl WidgetMessageResponse {
-    fn from(response: Value) -> Self {
-        WidgetMessageResponse {
-            request: WidgetMessageRequest {
-                api: "response.get(request)",
-                request_id: (),
-                action: (),
-                widget_id: (),
-                data: (),
-            },
-            response: serde_json::json!({"data":"example data TODO implement serialization"})
-        }
-    }
-    fn as_value(&self) -> serde_json::Value {
-        serde_json::json!({
-            "api":self.api.as_str(),
-            "request_id": self.request_id,
-            "action": self.action.as_str(),
-            "widget_id": self.
-        })
-    }
-}
+
+
+// {
+//     "api_direction":"data"
+//     "request_id":"data"
+//     "action":"data"
+//     "widget_id":"data"
+//     "data":"data"
+//     "response":"data"
+// }
+
+// {
+//     "api_direction":"data"
+//     "request_id":"data"
+//     "action":"data"
+//     "widget_id":"data"
+//     "data":"data"
+//
+// }
