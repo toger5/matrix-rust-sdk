@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 
+use crate::event_handler::EventHandler;
 use crate::room::{Common, Joined, Room};
 use crate::{BaseRoom, Client, Result, RoomState};
 use backoff::default;
@@ -9,80 +10,122 @@ use ruma::events::room::message::{
     OriginalSyncRoomMessageEvent, RoomMessageEventContent, SyncRoomMessageEvent,
 };
 use ruma::events::SyncMessageLikeEvent;
+use serde::de::DeserializeOwned;
 
-use crate::widgets::widget_request::{WidgetApiRequest, WidgetApiDirection, WidgetApiFromWidgetAction, WidgetApiToWidgetAction};
-#[derive(Clone)]
-pub struct WidgetDriver {
-    room: Option<Joined>,
-    toWidgetDelegate: Arc<RwLock<Option<Box<dyn ToWidgetDelegate>>>>,
+use crate::widgets::{
+    widget_handler::WidgetMessageHandler,
+    widget_message::{
+        FromWidgetAction, ToWidgetAction, WidgetMessageDirection, WidgetMessageRequest,
+    },
+};
+
+use super::widget_client_driver::{self, WidgetClientDriver};
+use super::widget_matrix_driver::{self, ActualMatrixClientDriver, WidgetMatrixDriver};
+use super::widget_message::{WidgetAction, WidgetMessage};
+
+pub trait RoomMessageHandler {
+    fn handle(ev: SyncRoomMessageEvent, room: Room, client: Client) {}
 }
 
-impl WidgetDriver {
+/// The WidgetDriver is responsible to consume all events emitted by the widget and handle them.
+/// It also sends events and responses to the widge.
+/// Last it exposes callbacks that the client needs to handle on specific widget requests (for example navigating to a room)
+#[derive(Clone)]
+pub struct WidgetDriver<CD: WidgetClientDriver, MD: WidgetMatrixDriver> {
+    widget_id: String,
+    // maybe `room` is not even required since this is abstracted into widget_matrix_driver
+    room: Option<Joined>,
+    // struct that implements all the required client-server matrix functionalities defined in the WidgetMatrixDriver trait (e.g. reading seding matrix events)
+    widget_matrix_driver: MD,
+    // struct that implements all the required client functionalities defined in the WidgetClientDriver trait (e.g. navigate)
+    widget_client_driver: CD,
+}
+
+impl<CD, MD> WidgetDriver<CD, MD> {
     // What should we use to emit events that should be send to the widget?
     // - are there events in the FFI? -
     // - are can the widgetDriver be initialized with callbacks?
     /// # Arguments
     /// * `room` - The underlying room.
-    pub fn new(room: Option<Joined>) -> Self {
-        let driver =
-            WidgetDriver { room: room.clone(), toWidgetDelegate: Arc::new(RwLock::new(None)) };
-        let driver_room = driver.room.clone().unwrap();
-        let handler = |ev: SyncRoomMessageEvent, room: Room, client: Client| async move {
-            // Common usage: Room event plus room and client.
-            println!("WidgetDriver handle event: {:?}", ev)
+    /// * `widget_client_driver` - A struct implementing all the client specific widget functionalities (e.g. navigate to a room)
+    /// * `widget_matrix_driver` - A struct implementing all the matrix specific widget functionalities (eg. read/send events, sending to device messages, getting oidc tokens ...)
+    pub fn new(
+        widget_id: &str,
+        room: Option<Joined>,
+        widget_client_driver: CD,
+        widget_matrix_driver: Option<MD>,
+    ) -> Self {
+        let actual_widget_matrix_driver = ActualMatrixClientDriver { room: room.clone() };
+        if let Some(widget_md) = widget_matrix_driver {
+            actual_widget_matrix_driver = widget_md;
+        }
+        let driver = WidgetDriver {
+            widget_id: widget_id.to_owned(),
+            room: room.clone(),
+            widget_matrix_driver: actual_widget_matrix_driver,
+            widget_client_driver: widget_client_driver,
         };
-        driver_room.inner.client.add_event_handler(handler);
         driver
-    }
-    async fn on_room_message(event: OriginalSyncRoomMessageEvent, room: Room) {
-        println!("WidgetDriver handle event")
     }
 
     /// # Arguments
-    /// * `json` - The widget event json.
-    pub async fn from_widget(self, json: &str) {
-        println!("widget driver handles {}, with room ", json);
-        let request = WidgetApiRequest{
-            api: WidgetApiDirection::FromWidget,
-            request_id: String::from("request_id1234"),
-            action: WidgetApiFromWidgetAction::ContentLoaded,
-            widget_id: String::from("widget_id1234"),
-            data: serde_json::json!({"data":"10"}),
-        }
-        // here we want to have a big match
-        match request.action {
-            WidgetApiFromWidgetAction::ContentLoaded => self.handle_content_loaded(request),
-            WidgetApiFromWidgetAction::MSC2876ReadEvents => self.handle_read_events(request),
-            default => self.handle_unimplemented_request(request)
-        }
-        let content =
-            RoomMessageEventContent::text_plain(json.to_owned() + &String::from("normal send"));
-        let r = self.room.clone().unwrap();
-        let _ = r.send_raw(serde_json::json!({"body":"test"}), "customWidgetType", None).await;
-        let _ = r.send(content, None).await;
+    /// * `message` - The raw string of the message received from the widget
+    pub async fn from_widget(self, message: &str) {
+        println!("widget driver handles {}, with room ", message);
+        self.handle(message);
     }
 
-    pub fn set_to_widget_delegate(&self, delegate: Option<Box<dyn ToWidgetDelegate>>) {
-        *self.toWidgetDelegate.write().unwrap() = delegate;
+    pub fn to_widget<Ev, Ctx, H>(&self, handler: H)
+    where
+        Ev: DeserializeOwned + Send + 'static,
+        H: EventHandler<Ev, Ctx>,
+    {
+        unimplemented!()
     }
 }
 
-// implement handle function (might should get split into its own file)
-impl WidgetDriver{
-    fn handle_content_loaded(&self, request: WidgetApiRequest){
-
-    }
-    fn handle_read_events(&self, request: WidgetApiRequest){
-
-    }
-    fn handle_unimplemented_request(&self, request: WidgetApiRequest){
-        let delegate = Arc::clone(&self.toWidgetDelegate);
-        if let Some(delegate) = delegate.read().unwrap().as_ref()
-                    {
-                        delegate.to_widget(request.)
-                    }
+impl WidgetDriver {
+    fn handle(message: &str) {
+        let msg: WidgetMessage = serde_json::from_value(serde_json::json!(message));
+        let WidgetMessage::Request(msg_req) = msg;
+        match msg_req.action {
+            WidgetAction::FromWidget(action) => match action {
+                FromWidgetAction::CloseModalWidget => todo!(),
+                FromWidgetAction::SupportedApiVersions => todo!(),
+                FromWidgetAction::ContentLoaded => todo!(),
+                FromWidgetAction::SendSticker => todo!(),
+                FromWidgetAction::UpdateAlwaysOnScreen => todo!(),
+                FromWidgetAction::GetOpenIDCredentials => todo!(),
+                FromWidgetAction::OpenModalWidget => todo!(),
+                FromWidgetAction::SetModalButtonEnabled => todo!(),
+                FromWidgetAction::SendEvent => todo!(),
+                FromWidgetAction::SendToDevice => todo!(),
+                FromWidgetAction::WatchTurnServers => todo!(),
+                FromWidgetAction::UnwatchTurnServers => todo!(),
+                FromWidgetAction::MSC2876ReadEvents => todo!(),
+                FromWidgetAction::MSC2931Navigate => todo!(),
+                FromWidgetAction::MSC2974RenegotiateCapabilities => todo!(),
+                FromWidgetAction::MSC3869ReadRelations => todo!(),
+                FromWidgetAction::MSC3973UserDirectorySearch => todo!(),
+            },
+            WidgetAction::ToWidget(action) => match action {
+                ToWidgetAction::SupportedApiVersions => todo!(),
+                ToWidgetAction::Capabilities => todo!(),
+                ToWidgetAction::NotifyCapabilities => todo!(),
+                ToWidgetAction::TakeScreenshot => todo!(),
+                ToWidgetAction::UpdateVisibility => todo!(),
+                ToWidgetAction::OpenIDCredentials => todo!(),
+                ToWidgetAction::WidgetConfig => todo!(),
+                ToWidgetAction::CloseModalWidget => todo!(),
+                ToWidgetAction::ButtonClicked => todo!(),
+                ToWidgetAction::SendEvent => todo!(),
+                ToWidgetAction::SendToDevice => todo!(),
+                ToWidgetAction::UpdateTurnServers => todo!(),
+            },
+        }
     }
 }
+
 impl Drop for WidgetDriver {
     fn drop(&mut self) {
         // Add cleanup code here
@@ -93,13 +136,7 @@ impl Drop for WidgetDriver {
 struct Capabilities {
     send_messages: String,
 }
-
-#[uniffi::export(callback_interface)]
-pub trait ToWidgetDelegate: Sync + Send {
-    fn to_widget(&self, request: serde_json::Value);
-}
-
-#[uniffi::export(callback_interface)]
-pub trait CapabilityDelegate: Sync + Send {
-    fn did_receive_capability_request(&self);
+pub enum Capability {
+    ReadMessages,
+    SendMessages,
 }

@@ -8,6 +8,7 @@ pub trait WidgetDriverToWidgetObserver: Sync + Send {
 }
 pub struct WidgetDriver {
     inner: matrix_sdk::widget::WidgetDriver,
+    to_widget_delegate: Arc<RwLock<Option<Box<dyn ToWidgetDelegate>>>>,
 }
 
 impl WidgetDriver {
@@ -25,4 +26,16 @@ impl WidgetDriver {
             }
         })))
     }
+    pub fn set_to_widget_delegate(&self, delegate: Option<Box<dyn ToWidgetDelegate>>) {
+        *self.to_widget_delegate.write().unwrap() = delegate;
+    }
+}
+#[uniffi::export(callback_interface)]
+pub trait ToWidgetDelegate: Sync + Send {
+    fn to_widget(&self, request: serde_json::Value);
+}
+
+#[uniffi::export(callback_interface)]
+pub trait CapabilityDelegate: Sync + Send {
+    fn did_receive_capability_request(&self);
 }
