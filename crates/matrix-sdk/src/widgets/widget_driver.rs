@@ -13,6 +13,8 @@ use super::widget_message::{WidgetAction, WidgetMessage, FromWidgetAction, ToWid
 pub trait RoomMessageHandler {
     fn handle(ev: SyncRoomMessageEvent, room: Room, client: Client) {}
 }
+#[derive(Clone)]
+
 struct Settings {
     waitForContentLoaded: bool,
 }

@@ -136,9 +136,9 @@ pub struct WidgetMessageRequest {
 }
 // serelize tags
 #[derive(Serialize, Deserialize, Debug)]
-pub struct WidgetMessageResponse<T> {
+pub struct WidgetMessageResponse{
     request: WidgetMessageRequest,
-    response: T,
+    response: Value,
 }
 
 

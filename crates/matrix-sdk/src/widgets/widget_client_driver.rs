@@ -22,4 +22,8 @@ impl WidgetClientDriver for ActualWidgetClientDriver {
     fn navigate(uri: &str) {
         unimplemented!()
     }
+
+    fn show_capability_request(cap: Capabilities) {
+        todo!()
+    }
 }
