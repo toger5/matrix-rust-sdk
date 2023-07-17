@@ -1,6 +1,6 @@
 use super::widget_api_actions::{
     capabilities::CapabilitiesResponse, open_id_credentials::OpenIdCredentialsResponse,
-    supported_api_versions::SupportedApiVersionsResponse, WidgetError, WidgetMessageEmptyData, send_to_device::SendToDeviceBody,
+    supported_api_versions::SupportedApiVersionsResponse, WidgetError, WidgetMessageEmptyData, send_to_device::{ FromWidgetSendToDeviceBody, ToWidgetSendToDeviceBody},
 };
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +138,7 @@ pub enum FromWidgetAction {
     #[serde(rename = "send_event")]
     SendEvent,
     #[serde(rename = "send_to_device")]
-    SendToDevice(SendToDeviceBody),
+    SendToDevice(FromWidgetSendToDeviceBody),
     #[serde(rename = "watch_turn_servers")]
     WatchTurnServers,
     #[serde(rename = "unwatch_turn_servers")]
@@ -199,7 +199,7 @@ pub enum ToWidgetAction {
     #[serde(rename = "send_event")]
     SendEvent,
     #[serde(rename = "send_to_device")]
-    SendToDevice,
+    SendToDevice(ToWidgetSendToDeviceBody),
     #[serde(rename = "update_turn_servers")]
     UpdateTurnServers,
 }
