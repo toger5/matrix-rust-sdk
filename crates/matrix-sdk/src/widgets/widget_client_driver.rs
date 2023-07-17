@@ -14,10 +14,11 @@ pub trait WidgetClientDriver {
     fn show_capability_request(cap: Capabilities);
 }
 
-struct ActualWidgetClientDriver {
-    room: Joined,
+pub struct ActualWidgetClientDriver {
+    pub room: Joined,
 }
 
+// this is what we bind to ffi
 impl WidgetClientDriver for ActualWidgetClientDriver {
     fn navigate(uri: &str) {
         unimplemented!()

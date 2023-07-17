@@ -14,6 +14,8 @@ use std::{env, process::exit};
 
 use anyhow::Error;
 use matrix_sdk::ruma::RoomId;
+use matrix_sdk::widgets::widget_client_driver::{self, ActualWidgetClientDriver};
+use matrix_sdk::widgets::widget_driver::Settings;
 use matrix_sdk::{
     config::SyncSettings,
     room::Joined,
@@ -108,14 +110,29 @@ async fn login_and_sync(
     let Room::Joined(joined_room) = room else { return  Ok(())};
     println!("ROOOM: {:?}", joined_room.name().unwrap());
 
-    let driver = matrix_sdk::widgets::widget_driver::WidgetDriver::new(Some(joined_room));
+
+
+
+
+
+    let client_driver = ActualWidgetClientDriver { room: joined_room.clone() };
+    let driver = matrix_sdk::widgets::widget_driver::WidgetClientApi::new(
+        "1234widgetid1234",
+        Some(joined_room),
+        client_driver,
+        vec![],
+        Settings { waitForContentLoaded: false },
+    );
 
     let test_json_get_oidc = r#"
     {
-        "name": "George",
-        "age": 27,
-        "verified": false
-    }
+            "request_id": "reqid",
+            "widget_id": "1234id1234",
+        
+            "api": "toWidget",
+            "action":"supported_api_versions",
+            "response":{"message": "some error"}
+        }
     "#;
     driver.from_widget(test_json_get_oidc).await;
     // since we called `sync_once` before we entered our sync loop we must pass

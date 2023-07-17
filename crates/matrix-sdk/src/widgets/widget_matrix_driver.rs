@@ -6,15 +6,12 @@ use ruma::events::room::message::SyncRoomMessageEvent;
 
 use crate::{
     room::{Joined, Room},
-    widgets::widget_message::{
-        ToWidgetAction, WidgetMessage, WidgetMessageDirection, WidgetMessageRequest, WidgetAction,
-    },
     Client,
 };
 
 use super::widget_driver::Capability;
 
-enum ReadDirection {
+pub enum ReadDirection {
     Forward,
     Backwards,
 }
@@ -161,7 +158,7 @@ pub trait WidgetMatrixDriver {
 
 #[derive(Clone)]
 pub struct ActualWidgetMatrixDriver {
-    room: Joined,
+    pub room: Joined,
 }
 impl ActualWidgetMatrixDriver {
     pub fn new(room: Joined, widget_id: String) -> Self {
