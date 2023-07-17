@@ -2,26 +2,25 @@ use crate::event_handler::EventHandler;
 use crate::room::{ Joined, Room};
 use crate::Client;
 
-use ruma::api::client::discovery::get_capabilities;
 use ruma::events::room::message::SyncRoomMessageEvent;
 use serde::de::DeserializeOwned;
 
 use super::widget_client_driver::WidgetClientDriver;
 use super::widget_matrix_driver::{ActualWidgetMatrixDriver, WidgetMatrixDriver};
-use super::widget_message::{WidgetActionBody, WidgetMessage, FromWidgetActionBody, ToWidgetActionBody};
+use super::widget_message::{WidgetActionBody, WidgetMessage, FromWidgetAction, ToWidgetAction};
 
 pub trait RoomMessageHandler {
     fn handle(ev: SyncRoomMessageEvent, room: Room, client: Client) {}
 }
-#[derive(Clone)]
 
+#[derive(Clone, Debug)]
 pub struct Settings {
     pub waitForContentLoaded: bool,
 }
 /// The WidgetDriver is responsible to consume all events emitted by the widget and handle them.
 /// It also sends events and responses to the widge.
 /// Last it exposes callbacks that the client needs to handle on specific widget requests (for example navigating to a room)
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WidgetClientApi<CD: WidgetClientDriver> {
     widget_id: String,
     // maybe `room` is not even required since this is abstracted into widget_matrix_driver
@@ -52,9 +51,7 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
         // widget_matrix_driver: Option<MD>,
     ) -> Self {
         let actual_widget_matrix_driver = ActualWidgetMatrixDriver { room: room.clone().unwrap() };
-        // if let Some(widget_md) = widget_matrix_driver {
-        //     actual_widget_matrix_driver = widget_md;
-        // }
+
         let driver = WidgetClientApi {
             widget_id: widget_id.to_owned(),
             room: room.clone(),
@@ -63,7 +60,7 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
             widget_settings:widget_settings.clone(),
             capabilities: initial_capabilies
         };
-        if(widget_settings.waitForContentLoaded){
+        if widget_settings.waitForContentLoaded {
             // driver.to_widget(/*Content Loaded*/);
         }
         driver
@@ -74,7 +71,8 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
     pub async fn from_widget(self, message: &str) {
         // check if reqest/response and direction match
         println!("widget driver handles {}, with room ", message);
-        self.handle(message);
+        let widget_message: WidgetMessage = serde_json::from_str(message).expect("could not parse msg event");
+        self.handle(widget_message);
     }
 
     pub fn to_widget<Ev, Ctx, H>(&self, handler: H)
@@ -93,45 +91,49 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
 }
 
 impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
-    fn handle(&self, message: &str) {
-        let msg: WidgetMessage = serde_json::from_str(message).expect("could not parse msg event");
-        match msg {
-            WidgetMessage::FromWidget(msgContent) => match msgContent.action {
-                FromWidgetActionBody::CloseModalWidget => unimplemented!(),
-                FromWidgetActionBody::SupportedApiVersions => todo!(),
-                FromWidgetActionBody::ContentLoaded => todo!(),
-                FromWidgetActionBody::SendSticker => unimplemented!(),
-                FromWidgetActionBody::UpdateAlwaysOnScreen => unimplemented!(),
-                FromWidgetActionBody::GetOpenIDCredentials => todo!(),
-                FromWidgetActionBody::OpenModalWidget => todo!(),
-                FromWidgetActionBody::SetModalButtonEnabled => unimplemented!(),
-                FromWidgetActionBody::SendEvent => todo!(),
-                FromWidgetActionBody::SendToDevice => todo!(),
-                FromWidgetActionBody::WatchTurnServers => todo!(),
-                FromWidgetActionBody::UnwatchTurnServers => todo!(),
-                FromWidgetActionBody::MSC2876ReadEvents => todo!(),
-                FromWidgetActionBody::MSC2931Navigate => unimplemented!(),
-                FromWidgetActionBody::MSC2974RenegotiateCapabilities => unimplemented!(),
-                FromWidgetActionBody::MSC3869ReadRelations => unimplemented!(),
-                FromWidgetActionBody::MSC3973UserDirectorySearch => unimplemented!(),
+    fn handle(&self, message: WidgetMessage) {
+        match message {
+            WidgetMessage::FromWidget(action) => match action {
+                FromWidgetAction::CloseModalWidget => unimplemented!(),
+                FromWidgetAction::SupportedApiVersions => todo!(),
+                FromWidgetAction::ContentLoaded => todo!(),
+                FromWidgetAction::SendSticker => unimplemented!(),
+                FromWidgetAction::UpdateAlwaysOnScreen => unimplemented!(),
+                FromWidgetAction::GetOpenIDCredentials => todo!(),
+                FromWidgetAction::OpenModalWidget => todo!(),
+                FromWidgetAction::SetModalButtonEnabled => unimplemented!(),
+                FromWidgetAction::SendEvent => todo!(),
+                FromWidgetAction::SendToDevice(send_to_device_body) => {
+                    println!("msg header:{:?}", send_to_device_body);
+                    println!("msg apiVersionBody:{:?}", send_to_device_body);
+                    // With Daniels code here we should have sth like
+                    // self.capabilities.sendToDevice(sendToDeviceBody)
+                },
+                FromWidgetAction::WatchTurnServers => todo!(),
+                FromWidgetAction::UnwatchTurnServers => todo!(),
+                FromWidgetAction::MSC2876ReadEvents => todo!(),
+                FromWidgetAction::MSC2931Navigate => unimplemented!(),
+                FromWidgetAction::MSC2974RenegotiateCapabilities => unimplemented!(),
+                FromWidgetAction::MSC3869ReadRelations => unimplemented!(),
+                FromWidgetAction::MSC3973UserDirectorySearch => unimplemented!(),
+                // _ => Err(format!("The widget action {:?} is not implemented", body))
             },
-            WidgetMessage::ToWidget(msgContent) => match msgContent.action {
-                    ToWidgetActionBody::SupportedApiVersions(apiVersionBody) => {
-                        println!("msg header:{:?}", msgContent.header);
-                        println!("msg apiVersionBody:{:?}", apiVersionBody);
-                        // todo!()
+            WidgetMessage::ToWidget(action) => match action {
+                    ToWidgetAction::SupportedApiVersions(api_version_body) => {
+                        println!("msg body:{:?}", api_version_body);
+                        println!("msg apiVersionBody:{:?}", api_version_body);
                     },
-                    ToWidgetActionBody::Capabilities(action) => todo!(),
-                    ToWidgetActionBody::NotifyCapabilities => todo!(),
-                    ToWidgetActionBody::TakeScreenshot => unimplemented!(),
-                    ToWidgetActionBody::UpdateVisibility => unimplemented!(),
-                    ToWidgetActionBody::OpenIDCredentials(action) => todo!(),
-                    ToWidgetActionBody::WidgetConfig => todo!(),
-                    ToWidgetActionBody::CloseModalWidget => unimplemented!(),
-                    ToWidgetActionBody::ButtonClicked => unimplemented!(),
-                    ToWidgetActionBody::SendEvent => todo!(),
-                    ToWidgetActionBody::SendToDevice => todo!(),
-                    ToWidgetActionBody::UpdateTurnServers => todo!(),
+                    ToWidgetAction::Capabilities(body) => todo!(),
+                    ToWidgetAction::NotifyCapabilities => todo!(),
+                    ToWidgetAction::TakeScreenshot => unimplemented!(),
+                    ToWidgetAction::UpdateVisibility => unimplemented!(),
+                    ToWidgetAction::OpenIDCredentials(body) => todo!(),
+                    ToWidgetAction::WidgetConfig => todo!(),
+                    ToWidgetAction::CloseModalWidget => unimplemented!(),
+                    ToWidgetAction::ButtonClicked => unimplemented!(),
+                    ToWidgetAction::SendEvent => todo!(),
+                    ToWidgetAction::SendToDevice => todo!(),
+                    ToWidgetAction::UpdateTurnServers => todo!(),
             },
         }
     }
@@ -144,7 +146,7 @@ impl<CD: WidgetClientDriver> Drop for WidgetClientApi<CD> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Capability {
     ReadMessages,
     SendMessages,

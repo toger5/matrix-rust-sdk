@@ -5,14 +5,13 @@ use ruma::events::room::message::RoomMessageEventContent;
 use super::{
     widget_client_driver::WidgetClientDriver,
     widget_matrix_driver::WidgetMatrixDriver,
-    widget_driver::WidgetClientApi,
-    widget_message::{WidgetMessageHeader},
+    widget_client_api::WidgetClientApi,
+    widget_message::{WidgetActionBody}, widget_api_actions::WidgetMessageEmptyData,
 };
 
 pub trait WidgetMessageHandler {
-    fn handle_content_loaded(&self, request: WidgetMessageHeader);
-    fn handle_read_events(&self, request: WidgetMessageHeader);
-    fn handle_unimplemented_request(&self, request: WidgetMessageHeader);
+    fn handle_content_loaded(&self, action: WidgetActionBody<WidgetMessageEmptyData, WidgetMessageEmptyData>);
+    fn handle_read_events(&self, request: WidgetActionBody<WidgetMessageEmptyData, WidgetMessageEmptyData>);
 }
 impl<CD: WidgetClientDriver> WidgetMessageHandler for WidgetClientApi<CD> {
     // pub async fn handle(&self, message: &str){
@@ -37,12 +36,6 @@ impl<CD: WidgetClientDriver> WidgetMessageHandler for WidgetClientApi<CD> {
     // }
 
     // private
-    fn handle_content_loaded(&self, request: WidgetMessageHeader) {}
-    fn handle_read_events(&self, request: WidgetMessageHeader) {}
-    fn handle_unimplemented_request(&self, request: WidgetMessageHeader) {
-        // let delegate = Arc::clone(&self.toWidgetDelegate);
-        // if let Some(delegate) = delegate.read().unwrap().as_ref() {
-        //     //delegate.to_widget(request.)
-        // }
-    }
+    fn handle_content_loaded(&self, request: WidgetActionBody<WidgetMessageEmptyData, WidgetMessageEmptyData>) {}
+    fn handle_read_events(&self, request: WidgetActionBody<WidgetMessageEmptyData, WidgetMessageEmptyData>) {}
 }

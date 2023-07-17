@@ -9,7 +9,7 @@ use crate::{
     Client,
 };
 
-use super::widget_driver::Capability;
+use super::widget_client_api::Capability;
 
 pub enum ReadDirection {
     Forward,
@@ -156,7 +156,7 @@ pub trait WidgetMatrixDriver {
     fn search_user_directory(searchTerm: &str, limit: u32);
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ActualWidgetMatrixDriver {
     pub room: Joined,
 }

@@ -15,7 +15,7 @@ use std::{env, process::exit};
 use anyhow::Error;
 use matrix_sdk::ruma::RoomId;
 use matrix_sdk::widgets::widget_client_driver::{self, ActualWidgetClientDriver};
-use matrix_sdk::widgets::widget_driver::Settings;
+use matrix_sdk::widgets::widget_client_api::Settings;
 use matrix_sdk::{
     config::SyncSettings,
     room::Joined,
@@ -116,7 +116,7 @@ async fn login_and_sync(
 
 
     let client_driver = ActualWidgetClientDriver { room: joined_room.clone() };
-    let driver = matrix_sdk::widgets::widget_driver::WidgetClientApi::new(
+    let driver = matrix_sdk::widgets::widget_client_api::WidgetClientApi::new(
         "1234widgetid1234",
         Some(joined_room),
         client_driver,

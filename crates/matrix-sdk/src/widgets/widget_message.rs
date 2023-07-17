@@ -1,6 +1,6 @@
-use super::widget_api::{
+use super::widget_api_actions::{
     capabilities::CapabilitiesResponse, open_id_credentials::OpenIdCredentialsResponse,
-    supported_api_versions::SupportedApiVersionsResponse, WidgetMessageEmptyData,
+    supported_api_versions::SupportedApiVersionsResponse, WidgetError, WidgetMessageEmptyData, send_to_device::SendToDeviceBody,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 //                         message: String
 //                     ),
 //                     Response(Value)
-//                     } 
+//                     }
 //                 }
 //             ),
 //             ContentLoaded(WidgetAction),
@@ -52,7 +52,7 @@ use serde::{Deserialize, Serialize};
 //                             message: String
 //                         ),
 //                         Response(Value)
-//                     } 
+//                     }
 //                 }
 //             ),
 //             Capabilities(WidgetAction),
@@ -62,7 +62,6 @@ use serde::{Deserialize, Serialize};
 //         }
 //     )
 // }
-
 
 // #[derive(Serialize, Deserialize, Debug)]
 // #[serde(tag = "api")]
@@ -87,30 +86,20 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "api")]
 pub enum WidgetMessage {
     #[serde(rename = "fromWidget")]
-    FromWidget (WidgetMessageContent<FromWidgetActionBody>),
+    FromWidget(FromWidgetAction),
     #[serde(rename = "toWidget")]
-    ToWidget (WidgetMessageContent<ToWidgetActionBody>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WidgetMessageContent<ActionBody>{
-    #[serde(flatten)]
-    pub header: WidgetMessageHeader,
-    #[serde(flatten)]
-    pub body: ActionBody,
-}
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WidgetMessageHeader {
-    #[serde(rename = "request_id")]
-    pub request_id: String,
-    #[serde(rename = "widget_id")]
-    pub widget_id: String,
+    ToWidget(ToWidgetAction),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WidgetActionBody<Req, Res> {
+    #[serde(rename = "request_id")]
+    pub request_id: String,
+    #[serde(rename = "widget_id")]
+    pub widget_id: String,
     #[serde(rename = "data")]
     request: Option<Req>,
+
     response: Option<Response<Res>>,
 }
 impl<Req, Res> WidgetActionBody<Req, Res> {
@@ -123,13 +112,13 @@ impl<Req, Res> WidgetActionBody<Req, Res> {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Response<Res> {
-    Error { message: String },
+    Error(WidgetError),
     Response(Res),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
-pub enum FromWidgetActionBody {
+pub enum FromWidgetAction {
     #[serde(rename = "supported_api_versions")]
     SupportedApiVersions,
     #[serde(rename = "content_loaded")]
@@ -149,7 +138,7 @@ pub enum FromWidgetActionBody {
     #[serde(rename = "send_event")]
     SendEvent,
     #[serde(rename = "send_to_device")]
-    SendToDevice,
+    SendToDevice(SendToDeviceBody),
     #[serde(rename = "watch_turn_servers")]
     WatchTurnServers,
     #[serde(rename = "unwatch_turn_servers")]
@@ -188,7 +177,7 @@ pub enum FromWidgetActionBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
-pub enum ToWidgetActionBody {
+pub enum ToWidgetAction {
     #[serde(rename = "supported_api_versions")]
     SupportedApiVersions(WidgetActionBody<WidgetMessageEmptyData, SupportedApiVersionsResponse>),
     #[serde(rename = "capabilities")]
