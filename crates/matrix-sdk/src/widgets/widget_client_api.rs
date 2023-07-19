@@ -2,12 +2,13 @@ use crate::event_handler::EventHandler;
 use crate::room::{ Joined, Room};
 use crate::Client;
 
+use imbl::HashMap;
 use ruma::events::room::message::SyncRoomMessageEvent;
 use serde::de::DeserializeOwned;
 
 use super::widget_client_driver::WidgetClientDriver;
-use super::widget_matrix_driver::{ActualWidgetMatrixDriver, WidgetMatrixDriver};
-use super::widget_message::{WidgetActionBody, WidgetMessage, FromWidgetAction, ToWidgetAction};
+use super::widget_matrix_driver::ActualWidgetMatrixDriver;
+use super::widget_message::{ WidgetMessage, FromWidgetAction, ToWidgetAction};
 
 pub trait RoomMessageHandler {
     fn handle(ev: SyncRoomMessageEvent, room: Room, client: Client) {}
@@ -31,7 +32,8 @@ pub struct WidgetClientApi<CD: WidgetClientDriver> {
     // struct that implements all the required client functionalities defined in the WidgetClientDriver trait (e.g. navigate)
     widget_client_driver: CD,
     // the capabilites need way to get stored to local data.
-    capabilities: Vec<Capability>,
+    capabilities: Vec<String>,
+    awaiting_responses: HashMap<String, WidgetMessage>
 }
 
 impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
@@ -46,9 +48,8 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
         widget_id: &str,
         room: Option<Joined>,
         widget_client_driver: CD,
-        initial_capabilies: Vec<Capability>,
+        initial_capabilies: Vec<String>,
         widget_settings: Settings,
-        // widget_matrix_driver: Option<MD>,
     ) -> Self {
         let actual_widget_matrix_driver = ActualWidgetMatrixDriver { room: room.clone().unwrap() };
 
@@ -84,24 +85,16 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
         // widget_matrix_driver.add_handler(|msg|->handler(msg));
         unimplemented!();
     }
-
-    pub fn get_capabilities() -> Vec<Capability>{
-        unimplemented!()
-    }
 }
 
 impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
     fn handle(&self, message: WidgetMessage) {
         match message {
             WidgetMessage::FromWidget(action) => match action {
-                FromWidgetAction::CloseModalWidget => unimplemented!(),
                 FromWidgetAction::SupportedApiVersions => todo!(),
                 FromWidgetAction::ContentLoaded => todo!(),
-                FromWidgetAction::SendSticker => unimplemented!(),
-                FromWidgetAction::UpdateAlwaysOnScreen => unimplemented!(),
                 FromWidgetAction::GetOpenIDCredentials => todo!(),
                 FromWidgetAction::OpenModalWidget => todo!(),
-                FromWidgetAction::SetModalButtonEnabled => unimplemented!(),
                 FromWidgetAction::SendEvent => todo!(),
                 FromWidgetAction::SendToDevice(send_to_device_body) => {
                     println!("msg header:{:?}", send_to_device_body);
@@ -112,11 +105,7 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
                 FromWidgetAction::WatchTurnServers => todo!(),
                 FromWidgetAction::UnwatchTurnServers => todo!(),
                 FromWidgetAction::MSC2876ReadEvents => todo!(),
-                FromWidgetAction::MSC2931Navigate => unimplemented!(),
-                FromWidgetAction::MSC2974RenegotiateCapabilities => unimplemented!(),
-                FromWidgetAction::MSC3869ReadRelations => unimplemented!(),
-                FromWidgetAction::MSC3973UserDirectorySearch => unimplemented!(),
-                // _ => Err(format!("The widget action {:?} is not implemented", body))
+                _ => unimplemented!()
             },
             WidgetMessage::ToWidget(action) => match action {
                     ToWidgetAction::SupportedApiVersions(api_version_body) => {
@@ -125,15 +114,12 @@ impl<CD: WidgetClientDriver> WidgetClientApi<CD> {
                     },
                     ToWidgetAction::Capabilities(body) => todo!(),
                     ToWidgetAction::NotifyCapabilities => todo!(),
-                    ToWidgetAction::TakeScreenshot => unimplemented!(),
-                    ToWidgetAction::UpdateVisibility => unimplemented!(),
                     ToWidgetAction::OpenIDCredentials(body) => todo!(),
                     ToWidgetAction::WidgetConfig => todo!(),
-                    ToWidgetAction::CloseModalWidget => unimplemented!(),
-                    ToWidgetAction::ButtonClicked => unimplemented!(),
                     ToWidgetAction::SendEvent => todo!(),
-                    ToWidgetAction::SendToDevice => todo!(),
+                    ToWidgetAction::SendToDevice(body) => todo!(),
                     ToWidgetAction::UpdateTurnServers => todo!(),
+                    _ => unimplemented!()
             },
         }
     }
@@ -144,10 +130,4 @@ impl<CD: WidgetClientDriver> Drop for WidgetClientApi<CD> {
         // Add cleanup code here
         println!("Remove event handler");
     }
-}
-
-#[derive(Clone, Debug)]
-pub enum Capability {
-    ReadMessages,
-    SendMessages,
 }
