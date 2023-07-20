@@ -1,6 +1,6 @@
 use ruma::api::client::discovery::get_capabilities::Capabilities;
 
-pub trait WidgetClientDriver {
+pub trait ClientFunctions {
     /// This is the most important message to be implemented in the client driver
     /// the function will be called on the struct implementing the client driver whenever there is a new message available
     /// that has to be sent to the widget

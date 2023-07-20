@@ -1,19 +1,19 @@
 pub mod widget_client_driver;
 pub mod widget_matrix_driver;
 
-use widget_client_driver::WidgetClientDriver;
+use widget_client_driver::ClientFunctions;
 
 use self::widget_matrix_driver::ActualWidgetMatrixDriver;
 
 use super::{handler::MessageHandlerDriver, messages::Outgoing};
 
-pub struct Driver<CD: WidgetClientDriver> {
+pub struct Driver<CD: ClientFunctions> {
     pub matrix_driver: ActualWidgetMatrixDriver,
     pub client_driver: CD,
     pub send_to_widget: dyn Fn(dyn Outgoing)->()
 }
 
-impl<CD: WidgetClientDriver> MessageHandlerDriver for Driver<CD> {
+impl<CD: ClientFunctions> MessageHandlerDriver for Driver<CD> {
     #[must_use]
     fn initialise<'life0, 'async_trait>(
         &'life0 mut self,
