@@ -19,6 +19,13 @@ pub struct MessageBody<Req, Resp> {
     pub request: Req,
     pub response: Option<Response<Resp>>,
 }
+impl<Req, Resp> ActionBody<Req, Resp>{
+    pub fn get_response_message(&self, r: Resp) -> ActionBody<Req, Resp>{
+        let mut response_body = *self.clone();
+        response_body.response = Some(Response::Response(r));
+        response_body
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
