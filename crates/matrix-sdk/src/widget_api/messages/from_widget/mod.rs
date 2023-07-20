@@ -1,15 +1,15 @@
-pub mod messages;
+pub mod actions;
 pub mod reply;
 
 pub use self::{
-    messages::{ApiVersion, Incoming, SupportedVersions},
+    actions::{ApiVersion, FromWidgetAction, SupportedVersions},
     reply::Reply,
 };
 pub use super::super::Error;
 
-pub struct Request<C, R> {
-    pub content: C,
-    reply: Reply<C, R>,
+pub struct Request<ReqBody, ResBody> {
+    pub content: ReqBody,
+    reply: Reply<ReqBody, ResBody>,
 }
 
 impl<C, R> Request<C, R> {

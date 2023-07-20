@@ -1,15 +1,18 @@
 use super::super::capabilities::Options as CapabilityRequest;
 
-pub trait Outgoing {
+pub mod actions;
+
+pub use self::actions::ToWidgetAction;
+pub trait ToWidget {
     type Response;
 }
 
 pub struct SendMeCapabilities;
-impl Outgoing for SendMeCapabilities {
+impl ToWidget for SendMeCapabilities {
     type Response = CapabilityRequest;
 }
 
 pub type CapabilitiesUpdated = CapabilityRequest;
-impl Outgoing for CapabilitiesUpdated {
+impl ToWidget for CapabilitiesUpdated {
     type Response = ();
 }
