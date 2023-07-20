@@ -9,7 +9,7 @@ use super::{
 };
 
 #[async_trait]
-pub trait Driver {
+pub trait MessageHandlerDriver {
     async fn initialise(&mut self, req: CapabilitiesReq) -> Result<Capabilities>;
     async fn send<T: Outgoing>(&mut self, req: T) -> Result<T::Response>;
 }
@@ -20,7 +20,7 @@ pub struct MessageHandler<T> {
     driver: T,
 }
 
-impl<T: Driver> MessageHandler<T> {
+impl<T: MessageHandlerDriver> MessageHandler<T> {
     pub fn new(driver: T) -> Self {
         Self { capabilities: None, driver }
     }
