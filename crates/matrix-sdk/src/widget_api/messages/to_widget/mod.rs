@@ -1,8 +1,8 @@
-use super::super::capabilities::Options as CapabilityRequest;
+use super::super::capabilities::Capabilities as CapabilityRequest;
 
-pub mod actions;
+pub mod message_types;
 
-pub use self::actions::ToWidgetAction;
+pub use self::message_types::ToWidgetMessage;
 pub trait ToWidget {
     type Response;
 }

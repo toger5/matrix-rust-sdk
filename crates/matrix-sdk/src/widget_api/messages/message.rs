@@ -1,30 +1,23 @@
 use serde::{Deserialize, Serialize};
 
-use super::{FromWidgetAction, ToWidgetAction};
+use super::{FromWidgetMessage, ToWidgetMessage};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "api")]
 pub enum Message {
     #[serde(rename = "fromWidget")]
-    FromWidget(FromWidgetAction),
+    FromWidget(FromWidgetMessage),
     #[serde(rename = "toWidget")]
-    ToWidget(ToWidgetAction),
+    ToWidget(ToWidgetMessage),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ActionBody<Req, Resp> {
+pub struct MessageBody<Req, Resp> {
     pub request_id: String,
     pub widget_id: String,
     #[serde(rename = "data")]
     pub request: Req,
     pub response: Option<Response<Resp>>,
-}
-impl<Req, Resp> ActionBody<Req, Resp>{
-    pub fn get_response_message(&self, r: Resp) -> ActionBody<Req, Resp>{
-        let mut response_body = *self.clone();
-        response_body.response = Some(Response::Response(r));
-        response_body
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

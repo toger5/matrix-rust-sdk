@@ -2,17 +2,17 @@ use serde::{Deserialize, Serialize};
 
 use url::Url;
 
-use crate::widget_api::messages::message::{Message, ActionBody};
+use crate::widget_api::messages::message::MessageBody;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action")]
-pub enum FromWidgetAction {
+pub enum FromWidgetMessage {
     #[serde(rename = "supported_api_versions")]
-    GetSupportedApiVersion(ActionBody<(), SupportedVersions>),
+    GetSupportedApiVersion(MessageBody<(), SupportedVersions>),
     #[serde(rename = "content_loaded")]
-    ContentLoaded(ActionBody<(), ()>),
+    ContentLoaded(MessageBody<(), ()>),
     #[serde(rename = "org.matrix.msc2931.navigate")]
-    Navigate(ActionBody<Url, Result<(), &'static str>>),
+    Navigate(MessageBody<Url, Result<(), &'static str>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

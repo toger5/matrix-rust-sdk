@@ -1,8 +1,8 @@
-pub mod actions;
+pub mod message_types;
 pub mod reply;
 
 pub use self::{
-    actions::{ApiVersion, FromWidgetAction, SupportedVersions},
+    message_types::{ApiVersion, FromWidgetMessage, SupportedVersions},
     reply::Reply,
 };
 pub use super::super::Error;

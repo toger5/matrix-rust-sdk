@@ -3,6 +3,6 @@ pub mod message;
 mod to_widget;
 
 pub use self::{
-    from_widget::{ApiVersion, FromWidgetAction, SupportedVersions},
-    to_widget::{CapabilitiesUpdated, ToWidgetAction, ToWidget, SendMeCapabilities},
+    from_widget::{ApiVersion, FromWidgetMessage, SupportedVersions},
+    to_widget::{CapabilitiesUpdated, ToWidgetMessage, ToWidget, SendMeCapabilities},
 };
