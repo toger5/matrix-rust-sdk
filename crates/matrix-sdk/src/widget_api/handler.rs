@@ -3,7 +3,9 @@ use async_trait::async_trait;
 use super::{
     capabilities::{Capabilities, Options as CapabilitiesReq},
     messages::{
+        message::{ActionBody, Message},
         ApiVersion, CapabilitiesUpdated, Incoming, Outgoing, SendMeCapabilities, SupportedVersions,
+        SUPPORTED_API_VERSIONS,
     },
     Error, Result,
 };
@@ -42,7 +44,7 @@ impl<T: Driver> MessageHandler<T> {
             }
 
             Incoming::GetSupportedApiVersion(r) => {
-                r.reply(SupportedVersions { versions: vec![ApiVersion::PreRelease] })?;
+                r.reply(SupportedVersions { versions: SUPPORTED_API_VERSIONS })?;
             }
 
             Incoming::Navigate(r) => {

@@ -6,6 +6,7 @@ pub use self::{
     reply::Reply,
 };
 pub use super::super::Error;
+use super::message::ActionBody;
 
 pub struct Request<ReqBody, ResBody> {
     pub content: ReqBody,
