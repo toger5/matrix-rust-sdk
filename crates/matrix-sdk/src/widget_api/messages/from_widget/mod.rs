@@ -1,15 +1,17 @@
 pub mod message_types;
 pub mod reply;
 
+use serde::{Deserialize, Serialize};
+
 pub use self::{
-    message_types::{ApiVersion, FromWidgetMessage, SupportedVersions},
     reply::Reply,
 };
 pub use super::super::Error;
-use super::message::ActionBody;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Request<ReqBody, ResBody> {
     pub content: ReqBody,
+    #[serde(skip_serializing)]
     reply: Reply<ReqBody, ResBody>,
 }
 

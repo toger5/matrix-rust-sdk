@@ -2,19 +2,17 @@ use ruma::events::{room::message::MessageType, TimelineEventType};
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
+#[derive(Debug, Default)]
 struct EventFilter {
     event_type: String,
     msgtype: Option<String>,
 }
+
+#[derive(Debug, Default)]
 struct StateEventFilter {
     event_type: String,
     state_key: Option<String>,
 }
-// impl EventFilter{
-//     fn check_event(ev: MatrixEvent) -> bool{
-
-//     }
-// }
 
 impl Serialize for EventFilter {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -58,145 +56,139 @@ impl<'de> Deserialize<'de> for EventFilter {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default)]
 pub struct Capabilities {
-    navigate: bool,
-    screenshot: bool,
+    pub navigate: bool,
+    pub screenshot: bool,
 
     // room events
-    send_room_event: Option<Vec<EventFilter>>,
-    receive_room_event: Option<Vec<EventFilter>>,
+    pub send_room_event: Option<Vec<EventFilter>>,
+    pub receive_room_event: Option<Vec<EventFilter>>,
     // state events
-    send_state_event: Option<Vec<EventFilter>>,
-    receive_state_event: Option<Vec<EventFilter>>,
+    pub send_state_event: Option<Vec<EventFilter>>,
+    pub receive_state_event: Option<Vec<EventFilter>>,
 
-    always_on_screen: bool, // "m.always_on_screen",
+    pub always_on_screen: bool, // "m.always_on_screen",
 
-    requires_client: bool,
+    pub requires_client: bool,
 }
 
-impl Serialize for Options {
+impl Serialize for Capabilities {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut capability_list = serializer.serialize_seq(None)?;
+        let mut capability_list:Vec<&str> = vec![];
         if self.navigate {
-            capability_list.serialize_element("org.matrix.msc2931.navigate")?;
+            capability_list.push("org.matrix.msc2931.navigate");
         }
         if self.screenshot {
-            capability_list.serialize_element("m.capability.screenshot")?;
+            capability_list.push("m.capability.screenshot");
         }
         if self.always_on_screen {
-            capability_list.serialize_element("m.always_on_screen")?;
+            capability_list.push("m.always_on_screen");
         }
         if self.always_on_screen {
-            capability_list.serialize_element("m.always_on_screen")?;
+            capability_list.push("m.always_on_screen");
         }
         if self.requires_client {
-            capability_list.serialize_element("io.element.requires_client")?;
+            capability_list.push("io.element.requires_client");
         }
 
         if let Some(ev_filter) = &self.send_room_event {
             for event_type in ev_filter {
-                capability_list.serialize_element(&format!(
+                capability_list.push(&format!(
                     "org.matrix.msc2762.m.send.event{}",
                     serde_json::to_string(&event_type).unwrap()
-                ))?;
+                ));
             }
         }
         if let Some(ev_filter) = &self.receive_room_event {
             for event_type in ev_filter {
-                capability_list.serialize_element(&format!(
+                capability_list.push(&format!(
                     "org.matrix.msc2762.m.receive.event{}",
                     serde_json::to_string(&event_type).unwrap()
-                ))?;
+                ));
             }
         }
         if let Some(ev_filter) = &self.send_state_event {
             for event_type in ev_filter {
-                capability_list.serialize_element(&format!(
+                capability_list.push(&format!(
                     "org.matrix.msc2762.m.send.state_event{}",
                     serde_json::to_string(&event_type).unwrap()
-                ))?;
+                ));
             }
         }
         if let Some(ev_filter) = &self.receive_state_event {
             for event_type in ev_filter {
-                capability_list.serialize_element(&format!(
+                capability_list.push(&format!(
                     "org.matrix.msc2762.m.receive.state_event{}",
                     serde_json::to_string(&event_type).unwrap()
-                ))?;
+                ));
             }
         }
-        // my_string_vec.serialize(serializer);
-        capability_list.end()
+        capability_list.serialize(serializer)
     }
 }
-impl<'de> Deserialize<'de> for Options {
+impl<'de> Deserialize<'de> for Capabilities {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let capability_list = Vec::<String>::deserialize(deserializer)?;
-        println!("Capability list: {:?}", capability_list);
-        // let s: &str = Deserialize::deserialize(deserializer)?;
-        // let options: Vec<String> = serde_json::from_str(s).unwrap();
-        let mut options = Options {
-            navigate: None,
-            screenshot: None,
-            always_on_screen: None, // "m.always_on_screen",
-            requires_client: None,
-            // room events
-            send_room_event: None,
-            receive_room_event: None,
-            // state events
-            send_state_event: None,
-            receive_state_event: None,
-        };
-        let send_room_event: Vec<EventFilter> = [];
-        let receive_room_event: Vec<EventFilter> = [];
-        let send_state_event: Vec<EventFilter> = [];
-        let receive_state_event: Vec<EventFilter> = [];
+        let mut capbilities = Capabilities::default();
+
+        let mut send_room_event: Vec<EventFilter> = vec![];
+        let mut receive_room_event: Vec<EventFilter> = vec![];
+        let mut send_state_event: Vec<EventFilter> = vec![];
+        let mut receive_state_event: Vec<EventFilter> = vec![];
         for capability in capability_list {
             if capability == "org.matrix.msc2931.navigate" {
-                options.navigate = Some(());
+                capbilities.navigate = true;
             }
             if capability == "m.capability.screenshot" {
-                options.screenshot = Some(());
+                capbilities.screenshot = true;
             }
             if capability == "m.always_on_screen" {
-                options.always_on_screen = Some(());
+                capbilities.always_on_screen = true;
             }
             if capability == "io.element.requires_client" {
-                options.requires_client = Some(());
+                capbilities.requires_client = true;
             }
             if capability.starts_with("org.matrix.msc2762.m.send.event") {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    send_room_event.push(serde_json::from_str(cap_split[1]));
+                    send_room_event.push(serde_json::from_str(cap_split[1]).unwrap());
                 }
             }
             if capability.starts_with("org.matrix.msc2762.m.receive.event") {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    receive_room_event.push(serde_json::from_str(cap_split[1]));
+                    receive_room_event.push(serde_json::from_str(cap_split[1]).unwrap());
                 }
             }
             if capability.starts_with("org.matrix.msc2762.m.send.state_event") {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    send_state_event.push(serde_json::from_str(cap_split[1]));
+                    send_state_event.push(serde_json::from_str(cap_split[1]).unwrap());
                 }
             }
             if capability.starts_with("org.matrix.msc2762.m.receive.state_event") {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    receive_state_event.push(serde_json::from_str(cap_split[1]));
+                    receive_state_event.push(serde_json::from_str(cap_split[1]).unwrap());
                 }
             }
         }
-        Ok(options)
+        capbilities.send_state_event =
+            if send_state_event.len() > 0 { Some(send_state_event) } else { None };
+        capbilities.receive_state_event =
+            if receive_state_event.len() > 0 { Some(receive_state_event) } else { None };
+        capbilities.receive_room_event =
+            if receive_room_event.len() > 0 { Some(receive_room_event) } else { None };
+        capbilities.send_room_event =
+            if send_room_event.len() > 0 { Some(send_room_event) } else { None };
+        Ok(capbilities)
     }
 }
 
@@ -205,8 +197,8 @@ pub struct ClientCapabilities {
     pub navigate: Option<Box<dyn Fn(Url) + Send + Sync + 'static>>,
 }
 
-impl<'t> From<&'t Capabilities> for Options {
+impl<'t> From<&'t Capabilities> for Capabilities {
     fn from(capabilities: &'t Capabilities) -> Self {
-        Self { navigate: capabilities.navigate.is_some(), ..Default::default() }
+        Self { navigate: capabilities.navigate, ..Default::default() }
     }
 }

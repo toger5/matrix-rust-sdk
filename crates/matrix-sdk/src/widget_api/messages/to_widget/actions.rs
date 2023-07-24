@@ -1,20 +1,20 @@
 use serde::{Deserialize, Serialize};
 
-use crate::widget_api::messages::{message::ActionBody, OpenIdState, MatrixEvent};
+use crate::widget_api::messages::{message::MessageBody, OpenIdState, MatrixEvent};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
-pub enum ToWidgetAction {
+pub enum ToWidgetMessage {
     #[serde(rename = "capabilities")]
-    SendMeCapabilities(ActionBody<(), SendMeCapabilitiesResponse>),
+    SendMeCapabilities(MessageBody<(), SendMeCapabilitiesResponse>),
     #[serde(rename = "notify_capabilities")]
-    CapabilitiesUpdated(ActionBody<CapabilitiesUpdatedRequest, ()>),
+    CapabilitiesUpdated(MessageBody<CapabilitiesUpdatedRequest, ()>),
     #[serde(rename = "openid_credentials")]
-    OpenIdCredentials(ActionBody<OpenIdCredentialsRequest, ()>),
+    OpenIdCredentials(MessageBody<OpenIdCredentialsRequest, ()>),
     #[serde(rename = "sent_to_device")]
-    SendToDevice(ActionBody<SendToDeviceRequest, ()>),
+    SendToDevice(MessageBody<SendToDeviceRequest, ()>),
     #[serde(rename = "send_event")]
-    SendEvent(ActionBody<MatrixEvent, ()>)
+    SendEvent(MessageBody<MatrixEvent, ()>)
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,19 +1,18 @@
 use async_trait::async_trait;
 
 use super::{
-    capabilities::{Capabilities, Options as CapabilitiesReq},
+    capabilities::{Capabilities},
     messages::{
-        message::{ActionBody, Message},
-        ApiVersion, CapabilitiesUpdated, Incoming, Outgoing, SendMeCapabilities, SupportedVersions,
-        SUPPORTED_API_VERSIONS,
+        message::{MessageBody, Message},
+        ApiVersion, CapabilitiesUpdated, ToWidget, SendMeCapabilities, SupportedVersions, SUPPORTED_API_VERSIONS, FromWidgetMessage,
     },
     Error, Result,
 };
 
 #[async_trait]
 pub trait Driver {
-    async fn initialise(&mut self, req: CapabilitiesReq) -> Result<Capabilities>;
-    async fn send<T: Outgoing>(&mut self, req: T) -> Result<T::Response>;
+    async fn initialise(&mut self, req: Capabilities) -> Result<Capabilities>;
+    async fn send<T: ToWidget>(&mut self, req: T) -> Result<T::Response>;
 }
 
 #[allow(missing_debug_implementations)]
@@ -27,9 +26,9 @@ impl<T: Driver> MessageHandler<T> {
         Self { capabilities: None, driver }
     }
 
-    pub async fn handle(&mut self, req: Incoming) -> Result<()> {
+    pub async fn handle(&mut self, req: FromWidgetMessage) -> Result<()> {
         match req {
-            Incoming::ContentLoaded(r) => {
+            FromWidgetMessage::ContentLoaded(r) => {
                 r.reply(())?;
                 if self.capabilities.is_none() {
                     return Err(Error::WidgetError("Content loaded twice".to_string()));
@@ -43,11 +42,11 @@ impl<T: Driver> MessageHandler<T> {
                 self.driver.send(approved).await?;
             }
 
-            Incoming::GetSupportedApiVersion(r) => {
+            FromWidgetMessage::GetSupportedApiVersion(r) => {
                 r.reply(SupportedVersions { versions: SUPPORTED_API_VERSIONS })?;
             }
 
-            Incoming::Navigate(r) => {
+            FromWidgetMessage::Navigate(r) => {
                 match self.capabilities.as_ref().and_then(|c| c.navigate.as_ref()) {
                     Some(navigate) => {
                         navigate(r.content.clone());

@@ -10,7 +10,7 @@ use crate::widget_api::messages::{
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action")]
-pub enum FromWidgetAction {
+pub enum FromWidgetMessage {
     #[serde(rename = "supported_api_versions")]
     GetSupportedApiVersion(MessageBody<(), SupportedVersions>),
     #[serde(rename = "content_loaded")]

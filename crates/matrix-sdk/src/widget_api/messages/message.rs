@@ -19,8 +19,8 @@ pub struct MessageBody<Req, Resp> {
     pub request: Req,
     pub response: Option<Response<Resp>>,
 }
-impl<Req, Resp> ActionBody<Req, Resp>{
-    pub fn get_response_message(&self, r: Resp) -> ActionBody<Req, Resp>{
+impl<Req, Resp> MessageBody<Req, Resp>{
+    pub fn get_response_message(&self, r: Resp) -> MessageBody<Req, Resp>{
         let mut response_body = *self.clone();
         response_body.response = Some(Response::Response(r));
         response_body
