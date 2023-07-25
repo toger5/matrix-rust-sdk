@@ -1,17 +1,17 @@
 use async_trait::async_trait;
 
-use super::capabilities::{Capabilities, Options as CapabilitiesReq};
+mod incoming;
+mod outgoing;
+mod request;
 
 pub use self::{
     incoming::{ApiVersion, Message as Incoming, SupportedVersions},
     outgoing::Message as Outgoing,
     request::Request,
 };
+use super::capabilities::{Capabilities, Options as CapabilitiesReq};
 pub use super::{Error, Result};
 
-mod incoming;
-mod outgoing;
-mod request;
 
 #[async_trait]
 pub trait Driver {
