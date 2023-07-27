@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use {from_widget::FromWidgetMessage, to_widget::ToWidgetMessage};
+
 pub mod from_widget;
 pub mod to_widget;
-use {from_widget::FromWidgetMessage, to_widget::ToWidgetMessage};
+pub mod capabilities;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "api")]
