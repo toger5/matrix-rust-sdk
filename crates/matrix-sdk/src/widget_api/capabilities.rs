@@ -1,5 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use url::Url;
+
+use super::messages::MatrixEvent;
 
 #[derive(Debug, Default)]
 pub struct EventFilter {
@@ -36,7 +37,7 @@ impl<'de> Deserialize<'de> for StateEventFilter {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let des_string = String::deserialize(deserializer)?;
         let split: Vec<&str> = des_string.split("#").collect();
-        let mut ev_type = split[0].to_owned();
+        let ev_type = split[0].to_owned();
         let mut state_key: Option<String> = None;
         if split.len() > 1 {
             state_key = Some(split[1].to_owned())
@@ -48,7 +49,7 @@ impl<'de> Deserialize<'de> for EventFilter {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let des_string = String::deserialize(deserializer)?;
         let split: Vec<&str> = des_string.split("#").collect();
-        let mut ev_type = split[0].to_owned();
+        let ev_type = split[0].to_owned();
         let mut msgtype: Option<String> = None;
         if split.len() > 1 {
             msgtype = Some(split[1].to_owned())
@@ -180,11 +181,20 @@ impl<'de> Deserialize<'de> for Options {
 }
 
 /// A wrapper for the matrix client that only exposes what is available through the capabilities.
+#[allow(missing_debug_implementations)]
 pub struct Capabilities {
+    pub send_room_event: Option<Box<dyn Fn(MatrixEvent) + Send + Sync + 'static>>,
 }
 
 impl<'t> From<&'t Capabilities> for Options {
     fn from(capabilities: &'t Capabilities) -> Self {
-        Self { ..Default::default() }
+        Self {
+            send_room_event: if capabilities.send_room_event.is_some() {
+                Some(vec![])
+            } else {
+                None
+            },
+            ..Default::default()
+        }
     }
 }

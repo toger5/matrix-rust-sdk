@@ -5,11 +5,11 @@ mod outgoing;
 mod request;
 
 pub use self::{
-    incoming::{ApiVersion, Message as Incoming, SupportedVersions},
+    incoming::Message as Incoming,
     outgoing::Message as Outgoing,
     request::Request,
 };
-use super::capabilities::{Capabilities, Options as CapabilitiesReq};
+use super::{capabilities::{Capabilities, Options as CapabilitiesReq}, messages::{SupportedVersions, SUPPORTED_API_VERSIONS}};
 pub use super::{Error, Result};
 
 
@@ -52,7 +52,7 @@ impl<T: Driver> MessageHandler<T> {
             }
 
             Incoming::GetSupportedApiVersion(r) => {
-                r.reply(SupportedVersions { versions: vec![ApiVersion::PreRelease] })?;
+                r.reply(SupportedVersions { versions: SUPPORTED_API_VERSIONS.to_vec() })?;
             }
         }
 
