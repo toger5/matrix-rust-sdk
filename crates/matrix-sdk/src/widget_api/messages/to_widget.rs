@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::widget_api::messages::{MessageBody, OpenIdState, MatrixEvent};
+use crate::widget_api::{messages::{MessageBody, OpenIdState, MatrixEvent}, capabilities};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
@@ -19,7 +19,7 @@ pub enum ToWidgetMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SendMeCapabilitiesResponse {
-    capabilities: Vec<String>
+    pub capabilities: capabilities::Options,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

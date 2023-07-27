@@ -59,7 +59,6 @@ impl<'de> Deserialize<'de> for EventFilter {
 
 #[derive(Debug, Default)]
 pub struct Options {
-    pub navigate: bool,
     pub screenshot: bool,
 
     // room events
@@ -80,9 +79,6 @@ impl Serialize for Options {
         S: Serializer,
     {
         let mut capability_list: Vec<String> = vec![];
-        if self.navigate {
-            capability_list.push("org.matrix.msc2931.navigate".to_owned());
-        }
         if self.screenshot {
             capability_list.push("m.capability.screenshot".to_owned());
         }
@@ -137,9 +133,6 @@ impl<'de> Deserialize<'de> for Options {
         let mut send_state_event: Vec<EventFilter> = vec![];
         let mut receive_state_event: Vec<EventFilter> = vec![];
         for capability in capability_list {
-            if capability == "org.matrix.msc2931.navigate" {
-                capbilities.navigate = true;
-            }
             if capability == "m.capability.screenshot" {
                 capbilities.screenshot = true;
             }
@@ -188,11 +181,10 @@ impl<'de> Deserialize<'de> for Options {
 
 /// A wrapper for the matrix client that only exposes what is available through the capabilities.
 pub struct Capabilities {
-    pub navigate: Option<Box<dyn Fn(Url) + Send + Sync + 'static>>,
 }
 
 impl<'t> From<&'t Capabilities> for Options {
     fn from(capabilities: &'t Capabilities) -> Self {
-        Self { navigate: capabilities.navigate.is_some(), ..Default::default() }
+        Self { ..Default::default() }
     }
 }

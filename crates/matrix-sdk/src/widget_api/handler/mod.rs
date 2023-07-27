@@ -54,18 +54,6 @@ impl<T: Driver> MessageHandler<T> {
             Incoming::GetSupportedApiVersion(r) => {
                 r.reply(SupportedVersions { versions: vec![ApiVersion::PreRelease] })?;
             }
-
-            Incoming::Navigate(r) => {
-                match self.capabilities.as_ref().and_then(|c| c.navigate.as_ref()) {
-                    Some(navigate) => {
-                        navigate(r.clone());
-                        r.reply(Ok(()))?;
-                    }
-                    None => {
-                        r.reply(Err("Not permissions to call navigate"))?;
-                    }
-                }
-            }
         }
 
         Ok(())

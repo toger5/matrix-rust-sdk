@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use url::Url;
-
 use crate::widget_api::messages::{
     MessageBody, MatrixEvent, OpenIdState, SupportedVersions, ReadRelationsDirection,
 };
@@ -15,8 +13,6 @@ pub enum FromWidgetMessage {
     GetSupportedApiVersion(MessageBody<(), SupportedVersions>),
     #[serde(rename = "content_loaded")]
     ContentLoaded(MessageBody<(), ()>),
-    #[serde(rename = "org.matrix.msc2931.navigate")]
-    Navigate(MessageBody<String, Result<(), String>>),
     #[serde(rename = "get_openid")]
     GetOpenId(MessageBody<(), GetOpenIdResponse>),
     #[serde(rename = "send_to_device")]
