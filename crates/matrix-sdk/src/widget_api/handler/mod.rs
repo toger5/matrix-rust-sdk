@@ -4,13 +4,14 @@ mod incoming;
 mod outgoing;
 mod request;
 
-pub use self::{incoming::Message as Incoming, outgoing::Message as Outgoing, request::Request};
 use super::{
     capabilities::Capabilities,
     messages::{
         capabilities::Options as CapabilitiesReq, SupportedVersions, SUPPORTED_API_VERSIONS,
     },
 };
+
+pub use self::{incoming::Message as Incoming, outgoing::Message as Outgoing, request::Request};
 pub use super::{Error, Result};
 
 #[async_trait]
