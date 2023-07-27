@@ -19,7 +19,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["e2e-encryption", "automatic-room-key-forwarding", "sqlite", "native-tls", "experimental-widget-api"]
 testing = ["matrix-sdk-sqlite?/testing"]
 
-e2e-encryption = ["matrix-sdk-base/e2e-encryption", "matrix-sdk-base/message-ids", "matrix-sdk-sqlite?/crypto-store", "matrix-sdk-indexeddb?/e2e-encryption"]
+e2e-encryption = [
+    "matrix-sdk-base/e2e-encryption",
+    "matrix-sdk-base/message-ids",
+    "matrix-sdk-sqlite?/crypto-store",        # activate crypto-store on sqlite if given
+    "matrix-sdk-indexeddb?/e2e-encryption",   # activate on indexeddb if given
+]
 js = ["matrix-sdk-common/js", "matrix-sdk-base/js"]
 
 sqlite = ["dep:matrix-sdk-sqlite", "matrix-sdk-sqlite?/state-store"]
@@ -37,7 +42,11 @@ appservice = ["ruma/appservice-api-s"]
 image-proc = ["dep:image"]
 image-rayon = ["image-proc", "image?/jpeg_rayon"]
 
-experimental-sliding-sync = ["matrix-sdk-base/experimental-sliding-sync", "reqwest/gzip", "dep:eyeball-im-util"]
+experimental-sliding-sync = [
+    "matrix-sdk-base/experimental-sliding-sync",
+    "reqwest/gzip",
+    "dep:eyeball-im-util",
+]
 
 experimental-widget-api = []
 
