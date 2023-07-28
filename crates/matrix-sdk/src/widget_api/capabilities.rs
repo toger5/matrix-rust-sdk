@@ -3,6 +3,7 @@ use super::messages::{MatrixEvent, self};
 
 /// A wrapper for the matrix client that only exposes what is available through the capabilities.
 #[allow(missing_debug_implementations)]
+#[derive(Default)]
 pub struct Capabilities {
     pub send_room_event: Option<Box<dyn Fn(MatrixEvent) + Send + Sync + 'static>>,
 }

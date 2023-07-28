@@ -14,10 +14,10 @@ use super::{
 pub use self::{incoming::Message as Incoming, outgoing::Message as Outgoing, request::Request};
 pub use super::{Error, Result};
 
-#[async_trait]
+// Make this an async trait wiht async initialise and send functions
 pub trait Driver {
-    async fn initialise(&mut self, req: CapabilitiesReq) -> Result<Capabilities>;
-    async fn send(&mut self, message: Outgoing) -> Result<()>;
+    fn initialise(&self, req: CapabilitiesReq) -> Result<Capabilities>;
+    fn send(&self, message: Outgoing) -> Result<()>;
 }
 
 #[allow(missing_debug_implementations)]
@@ -40,15 +40,15 @@ impl<T: Driver> MessageHandler<T> {
                 }
 
                 let (req, resp) = Request::new(());
-                self.driver.send(Outgoing::SendMeCapabilities(req)).await?;
+                self.driver.send(Outgoing::SendMeCapabilities(req))?;//.await?;
                 let options = resp.await.map_err(|_| Error::WidgetDied)?;
 
-                let capabilities = self.driver.initialise(options).await?;
+                let capabilities = self.driver.initialise(options)?;//.await?;
                 self.capabilities = Some(capabilities);
 
                 let approved: CapabilitiesReq = self.capabilities.as_ref().unwrap().into();
                 let (req, resp) = Request::new(approved);
-                self.driver.send(Outgoing::CapabilitiesUpdated(req)).await?;
+                self.driver.send(Outgoing::CapabilitiesUpdated(req));//.await?;
                 resp.await.map_err(|_| Error::WidgetDied)?;
             }
 
