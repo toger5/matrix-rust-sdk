@@ -1,61 +1,8 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::widget_api::capabilities::Capabilities;
 
-#[derive(Debug, Default)]
-pub struct EventFilter {
-    event_type: String,
-    msgtype: Option<String>,
-}
-
-#[derive(Debug, Default)]
-pub struct StateEventFilter {
-    event_type: String,
-    state_key: Option<String>,
-}
-
-impl Serialize for EventFilter {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut string = format!("{}", self.event_type);
-        if let Some(msgtype) = &self.msgtype {
-            string = format!("{}#{}", string, msgtype);
-        }
-        serializer.serialize_str(&string)
-    }
-}
-impl Serialize for StateEventFilter {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut string = format!(":{}", self.event_type);
-        if let Some(state_key) = &self.state_key {
-            string = format!("{}#{}", string, state_key);
-        }
-        serializer.serialize_str(&string)
-    }
-}
-
-impl<'de> Deserialize<'de> for StateEventFilter {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let des_string = String::deserialize(deserializer)?;
-        let split: Vec<&str> = des_string.split("#").collect();
-        let ev_type = split[0].to_owned();
-        let mut state_key: Option<String> = None;
-        if split.len() > 1 {
-            state_key = Some(split[1].to_owned())
-        }
-        Ok(StateEventFilter { event_type: ev_type, state_key: state_key })
-    }
-}
-impl<'de> Deserialize<'de> for EventFilter {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let des_string = String::deserialize(deserializer)?;
-        let split: Vec<&str> = des_string.split("#").collect();
-        let ev_type = split[0].to_owned();
-        let mut msgtype: Option<String> = None;
-        if split.len() > 1 {
-            msgtype = Some(split[1].to_owned())
-        }
-        Ok(EventFilter { event_type: ev_type, msgtype: msgtype })
-    }
-}
+use super::MatrixEvent;
 
 #[derive(Debug, Default)]
 pub struct Options {
@@ -176,5 +123,119 @@ impl<'de> Deserialize<'de> for Options {
         capbilities.send_room_event =
             if send_room_event.len() > 0 { Some(send_room_event) } else { None };
         Ok(capbilities)
+    }
+}
+
+impl<'t> From<&'t Capabilities> for Options {
+    fn from(capabilities: &'t Capabilities) -> Self {
+        Self {
+            send_room_event: if capabilities.send_room_event.is_some() {
+                Some(vec![])
+            } else {
+                None
+            },
+            ..Default::default()
+        }
+    }
+}
+
+pub trait Filter {
+    fn allow_event(&self, event: &MatrixEvent) -> bool;
+}
+#[derive(Debug, Default)]
+pub struct EventFilter {
+    event_type: String,
+    msgtype: Option<String>,
+}
+impl Filter for EventFilter {
+    fn allow_event(&self, event: &MatrixEvent) -> bool {
+        if event.event_type == self.event_type {
+            if let Some(msgtype) = self.msgtype.clone() {
+                if event.event_type == "m.room.message" {
+                    if event
+                        .content
+                        .get("msgtype")
+                        .unwrap_or(&serde_json::to_value("").unwrap())
+                        .to_string()
+                        == msgtype
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+}
+pub struct EventFilterAllowAll {}
+impl Filter for EventFilterAllowAll {
+    fn allow_event(&self, event: &MatrixEvent) -> bool {
+        true
+    }
+}
+#[derive(Debug, Default)]
+pub struct StateEventFilter {
+    event_type: String,
+    state_key: Option<String>,
+}
+impl Filter for StateEventFilter {
+    fn allow_event(&self, event: &MatrixEvent) -> bool {
+        if event.event_type == self.event_type {
+            if let Some(state_key) = self.state_key.clone() {
+                if let Some(ev_state_key) = event.state_key.clone() {
+                    if state_key == ev_state_key {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+}
+impl Serialize for EventFilter {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut string = format!("{}", self.event_type);
+        if let Some(msgtype) = &self.msgtype {
+            string = format!("{}#{}", string, msgtype);
+        }
+        serializer.serialize_str(&string)
+    }
+}
+impl Serialize for StateEventFilter {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut string = format!(":{}", self.event_type);
+        if let Some(state_key) = &self.state_key {
+            string = format!("{}#{}", string, state_key);
+        }
+        serializer.serialize_str(&string)
+    }
+}
+
+impl<'de> Deserialize<'de> for StateEventFilter {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let des_string = String::deserialize(deserializer)?;
+        let split: Vec<&str> = des_string.split("#").collect();
+        let ev_type = split[0].to_owned();
+        let mut state_key: Option<String> = None;
+        if split.len() > 1 {
+            state_key = Some(split[1].to_owned())
+        }
+        Ok(StateEventFilter { event_type: ev_type, state_key: state_key })
+    }
+}
+impl<'de> Deserialize<'de> for EventFilter {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let des_string = String::deserialize(deserializer)?;
+        let split: Vec<&str> = des_string.split("#").collect();
+        let ev_type = split[0].to_owned();
+        let mut msgtype: Option<String> = None;
+        if split.len() > 1 {
+            msgtype = Some(split[1].to_owned())
+        }
+        Ok(EventFilter { event_type: ev_type, msgtype: msgtype })
     }
 }

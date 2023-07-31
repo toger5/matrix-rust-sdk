@@ -1,7 +1,5 @@
-use std::collections::HashSet;
 // use uuid::Uuid;
 
-use futures_util::future::Join;
 use ruma::events::room::message::SyncRoomMessageEvent;
 
 use crate::{
@@ -9,29 +7,35 @@ use crate::{
     Client,
 };
 
-
 pub enum ReadDirection {
     Forward,
     Backwards,
 }
 pub trait MatrixDriver {
-
     /**
-     * Sends an event into a room. If `roomId` is falsy, the client should send the event
-     * into the room the user is currently looking at. The widget API will have already
+     * Sends an event into a room. The widget API will have already
      * verified that the widget is capable of sending the event to that room.
      * @param {string} eventType The event type to be sent.
      * @param {*} content The content for the event.
-     * @param {string|null} stateKey The state key if this is a state event, otherwise null.
-     * May be an empty string.
-     * @param {string|null} roomId The room ID to send the event to. If falsy, the room the
-     * user is currently looking at.
      * @returns {Promise<ISendEventDetails>} Resolves when the event has been sent with
      * details of that event.
-     * @throws Rejected when the event could not be sent.
      */
-    fn send_event(eventType: &str, content: serde_json::Value, stateKey: &str, roomId: &str);
-
+    fn send_room_event(
+        &self,
+        event_type: &str,
+        content: serde_json::Value,
+        state_key: Option<&str>,
+        room_id: &str,
+    );
+    /**
+     * Sends a state event into a room. The widget API will have already
+     * verified that the widget is capable of sending the event to that room.
+     * @param {string} eventType The event type to be sent.
+     * @param {*} content The content for the event.
+     * @returns {Promise<ISendEventDetails>} Resolves when the event has been sent with
+     * details of that event.
+     */
+    fn send_state_event(&self, event_type: &str, content: serde_json::Value, room_id: &str);
     /**
      * Sends a to-device event. The widget API will have already verified that the widget
      * is capable of sending the event.
@@ -42,9 +46,10 @@ pub trait MatrixDriver {
      * @throws Rejected when the event could not be sent.
      */
     fn send_to_device(
-        eventType: &str,
+        &self,
+        event_type: &str,
         encrypted: bool,
-        contentMap: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
+        content_map: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
     );
 
     /**
@@ -62,7 +67,7 @@ pub trait MatrixDriver {
      * to look within, possibly containing Symbols.AnyRoom to denote all known rooms.
      * @returns {Promise<IRoomEvent[]>} Resolves to the room events, or an empty array.
      */
-    fn read_room_events(eventType: &str, msgtype: &str, limit: u32, roomIds: Vec<String>);
+    fn read_room_events(&self, event_type: &str, msgtype: &str, limit: u32, room_ids: Vec<String>);
 
     /**
      * Reads all events of the given type, and optionally state key (if applicable/defined),
@@ -79,7 +84,13 @@ pub trait MatrixDriver {
      * to look within, possibly containing Symbols.AnyRoom to denote all known rooms.
      * @returns {Promise<IRoomEvent[]>} Resolves to the state events, or an empty array.
      */
-    fn read_state_events(eventType: &str, stateKey: &str, limit: u32, roomIds: Vec<String>);
+    fn read_state_events(
+        &self,
+        event_type: &str,
+        state_key: &str,
+        limit: u32,
+        room_ids: Vec<String>,
+    );
 
     /**
      * Reads all events that are related to a given event. The widget API will
@@ -106,10 +117,11 @@ pub trait MatrixDriver {
      * @returns Resolves to the room relations.
      */
     fn read_event_relations(
-        eventId: &str,
-        roomId: &str,
-        relationType: &str,
-        eventType: &str,
+        &self,
+        event_id: &str,
+        room_id: &str,
+        relation_type: &str,
+        event_type: &str,
         from: &str,
         to: &str,
         limit: u32,
@@ -127,14 +139,13 @@ pub trait MatrixDriver {
     /// The widget API will reject the widget's request with an error if this contract is not
     /// met properly. By default, the widget driver will block all OIDC requests.
     /// @param {SimpleObservable<IOpenIDUpdate>} observer The observable to feed updates into.
-    fn ask_open_id(/*observer: SimpleObservable<IOpenIDUpdate>*/);
+    fn ask_open_id(&self /*observer: SimpleObservable<IOpenIDUpdate>*/);
 
     /// Polls for TURN server data, yielding an initial set of credentials as soon as possible, and
     /// thereafter yielding new credentials whenever the previous ones expire. The widget API will
     /// have already verified that the widget has permission to access TURN servers.
     /// @yields {ITurnServer} The TURN server URIs and credentials currently available to the client.
-    fn get_turn_servers();
-
+    fn get_turn_servers(&self);
 }
 
 #[derive(Clone, Debug)]
@@ -142,7 +153,7 @@ pub struct RustSdkMatrixDriver {
     pub room: Joined,
 }
 impl RustSdkMatrixDriver {
-    pub fn new(room: Joined, widget_id: String) -> Self {
+    pub fn new(room: Joined) -> Self {
         let matrix_driver = RustSdkMatrixDriver { room };
         let driver_room = matrix_driver.room.clone();
         let room_message_callback = |ev: SyncRoomMessageEvent, room: Room, client: Client| async move {
@@ -153,17 +164,18 @@ impl RustSdkMatrixDriver {
     }
 }
 impl MatrixDriver for RustSdkMatrixDriver {
-    fn ask_open_id(/*observer: SimpleObservable<IOpenIDUpdate>*/) {
+    fn ask_open_id(&self /*observer: SimpleObservable<IOpenIDUpdate>*/) {
         unimplemented!()
     }
-    fn get_turn_servers() {
+    fn get_turn_servers(&self) {
         unimplemented!()
     }
     fn read_event_relations(
-        eventId: &str,
-        roomId: &str,
-        relationType: &str,
-        eventType: &str,
+        &self,
+        event_id: &str,
+        room_id: &str,
+        relation_type: &str,
+        event_type: &str,
         from: &str,
         to: &str,
         limit: u32,
@@ -171,20 +183,41 @@ impl MatrixDriver for RustSdkMatrixDriver {
     ) {
         unimplemented!()
     }
-    fn read_room_events(eventType: &str, msgtype: &str, limit: u32, roomIds: Vec<String>) {
+    fn read_room_events(&self, event_type: &str, msgtype: &str, limit: u32, room_ids: Vec<String>) {
         unimplemented!()
     }
-    fn read_state_events(eventType: &str, stateKey: &str, limit: u32, roomIds: Vec<String>) {
-        unimplemented!()
-    }
-    fn send_event(eventType: &str, content: serde_json::Value, stateKey: &str, roomId: &str) {
-        unimplemented!()
-    }
-    fn send_to_device(
-        eventType: &str,
-        encrypted: bool,
-        contentMap: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
+    fn read_state_events(
+        &self,
+        event_type: &str,
+        state_key: &str,
+        limit: u32,
+        room_ids: Vec<String>,
     ) {
         unimplemented!()
+    }
+
+    fn send_room_event(
+        &self,
+        event_type: &str,
+        content: serde_json::Value,
+        state_key: Option<&str>,
+        room_id: &str,
+    ) {
+        todo!()
+    }
+    
+    fn send_to_device(
+        &self,
+        event_type: &str,
+        encrypted: bool,
+        content_map: serde_json::Value, /*{ [userId: string]: { [deviceId: string]: object } }*/
+    ) {
+        unimplemented!()
+    }
+
+
+
+    fn send_state_event(&self, event_type: &str, content: serde_json::Value, room_id: &str) {
+        todo!()
     }
 }
