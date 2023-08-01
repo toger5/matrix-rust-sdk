@@ -2,27 +2,25 @@ use ruma::events::room::message::SyncRoomMessageEvent;
 use serde_json::json;
 
 use crate::event_handler::EventHandlerHandle;
+use crate::room::Joined;
 
-pub use self::matrix_driver::{MatrixDriver, RustSdkMatrixDriver};
 use super::capabilities::OnEventCallback;
 use super::error::Result;
 use super::messages::capabilities::{Filter, Options};
 use super::messages::{MatrixEvent, Unsigned};
 use super::Error;
-use super::{capabilities::Capabilities, handler, handler::Outgoing, widget::Widget};
-use std::marker::{Send, Sync};
-use std::sync::Arc;
-
-pub mod matrix_driver;
-
+use super::{capabilities::Capabilities, handler,  widget::Widget};
+use crate::widget_api::handler::Outgoing;
 pub struct Driver<W: Widget> {
-    pub matrix_driver: Box<RustSdkMatrixDriver>,
+    pub matrix_room: Joined,
     pub widget: W,
     add_event_handler_handle: Option<EventHandlerHandle>,
 }
 impl<W: Widget> handler::Driver for Driver<W> {
     // was initially defined as async by Daniel but for simplicity Timo made it sync for now
     fn send(&self, message: Outgoing) -> Result<()> {
+        // let message_str = serde_json::to_string(&message)?;
+        self.widget.send_widget_message("TODO get message string from outgoing");
         Result::Ok(())
     }
     // was initially defined as async by Daniel but for simplicity Timo made it sync for now
@@ -44,17 +42,13 @@ impl<W: Widget> Driver<W> {
     ) -> Option<Box<dyn Fn(MatrixEvent) -> Result<()>>> {
         let mut send_event_capability = None;
         let send_event_filter = options.send_room_event.as_ref().unwrap_or(&vec![]);
-        let dr = self.matrix_driver.clone();
+        let m_room = self.matrix_room;
         if send_event_filter.len() > 0 {
             let send_event_closure: Box<dyn Fn(MatrixEvent) -> Result<()>> =
                 Box::new(move |matrix_event: MatrixEvent| -> Result<()> {
                     if send_event_filter.iter().any(|filter| filter.allow_event(&matrix_event)) {
-                        dr.send_room_event(
-                            &matrix_event.event_type,
-                            matrix_event.content,
-                            matrix_event.state_key.as_deref(),
-                            &matrix_event.room_id,
-                        );
+                        m_room.send_raw(matrix_event.content, &matrix_event.event_type, None);
+
                         Result::<()>::Ok(())
                     } else {
                         Err(Error::WidgetError(
@@ -72,12 +66,12 @@ impl<W: Widget> Driver<W> {
         options: &Options,
     ) -> Option<Box<dyn Fn(OnEventCallback)>> {
         let mut add_matrix_room_event_listener_capability = None;
-        let room_id = self.matrix_driver.room.room_id().to_string();
+        let room_id = self.matrix_room.room_id().to_string();
         let receive_event_filter = options.receive_room_event.as_ref().unwrap_or(&vec![]);
         if receive_event_filter.len() > 0 {
             let reveive_event_closure: Box<dyn Fn(OnEventCallback)> =
                 Box::new(|on_event: OnEventCallback| {
-                    let handle = self.matrix_driver.room.add_event_handler(
+                    let handle = self.matrix_room.add_event_handler(
                         |ev: SyncRoomMessageEvent| async move {
                             // if receive_event_filter.iter().any(|filter|filter.allow_event(m)){
                             // on_event(m)

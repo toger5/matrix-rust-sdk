@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 mod incoming;
 mod outgoing;
 mod request;

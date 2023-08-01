@@ -6,30 +6,23 @@ pub mod driver;
 pub mod error;
 pub mod handler;
 pub mod messages;
-pub mod trasport;
 pub mod widget;
 
 use std::sync::{Arc, Mutex};
 
 pub use self::error::{Error, Result};
-use self::{
-    driver::{Driver, RustSdkMatrixDriver},
-    handler::MessageHandler,
-    trasport::{DummyTransport, Transport},
-    widget::Widget,
-};
+use self::{driver::Driver, handler::MessageHandler, widget::Widget};
 use crate::room::Joined;
 
 pub struct WidgetDriver<W: Widget> {
-    transport: DummyTransport,
     pub handler: Arc<Mutex<MessageHandler<Driver<W>>>>,
 }
 
 impl<W: Widget + 'static> WidgetDriver<W> {
     fn new(widget: W, room: Joined) -> Self {
-        let driver = Driver { widget, matrix_driver: RustSdkMatrixDriver { room } };
+        let driver = Driver { widget, matrix_room: room, add_event_handler_handle: None };
         let handler = Arc::new(Mutex::new(MessageHandler::new(driver)));
-        let widget_driver = WidgetDriver { transport: DummyTransport {}, handler: handler.clone() };
+        let widget_driver = WidgetDriver { handler: handler.clone() };
 
         widget_driver.transport.on_incoming(Box::new(move |req| {
             handler.lock().unwrap().handle(req);
@@ -39,8 +32,8 @@ impl<W: Widget + 'static> WidgetDriver<W> {
     }
 
     fn handle_widget_message(&self, message: &str) {
-        self.transport.receive(message);
+        self.handler.handle(message);
     }
 
-    fn transform_widget_url(url: &str) {}
+    fn transform_widget_url(&self, url: &str) {}
 }
