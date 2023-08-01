@@ -28,7 +28,7 @@ impl<T: Driver> MessageHandler<T> {
     pub async fn new(driver: T, init_immediately: bool) -> Result<Self> {
         let mut handler = Self { capabilities: None, driver };
         if init_immediately {
-            handler.initialise();//.await?;
+            handler.initialise().await?;
         }
 
         Ok(handler)
@@ -55,15 +55,15 @@ impl<T: Driver> MessageHandler<T> {
 
     async fn initialise(&mut self) -> Result<()> {
         let (req, resp) = Request::new(());
-        self.driver.send(Outgoing::SendMeCapabilities(req));//.await?;
+        self.driver.send(Outgoing::SendMeCapabilities(req))?;//.await?;
         let options = resp.recv().await?;
 
-        let capabilities = self.driver.initialise(options).await?;
+        let capabilities = self.driver.initialise(options)?;//.await?;
         self.capabilities = Some(capabilities);
 
         let approved: CapabilitiesReq = self.capabilities.as_ref().unwrap().into();
         let (req, resp) = Request::new(approved);
-        self.driver.send(Outgoing::CapabilitiesUpdated(req));//.await?;
+        self.driver.send(Outgoing::CapabilitiesUpdated(req))?;//.await?;
         resp.recv().await?;
 
         Ok(())
