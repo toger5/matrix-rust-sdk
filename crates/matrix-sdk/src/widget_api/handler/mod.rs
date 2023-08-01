@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 
+pub mod openid;
 mod incoming;
 mod outgoing;
 mod request;

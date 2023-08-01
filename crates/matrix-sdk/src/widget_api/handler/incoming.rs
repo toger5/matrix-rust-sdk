@@ -7,4 +7,3 @@ pub enum Message {
     GetSupportedApiVersion(Request<(), SupportedVersions>),
     ContentLoaded(Request<(), ()>),
 }
-
