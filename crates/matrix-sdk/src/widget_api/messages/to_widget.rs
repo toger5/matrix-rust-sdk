@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{super::handler::openid, capabilities::Options, MatrixEvent, MessageBody};
+use super::{openid, capabilities::Options, MatrixEvent, MessageBody};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]

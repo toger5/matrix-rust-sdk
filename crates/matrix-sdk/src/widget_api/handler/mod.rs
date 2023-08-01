@@ -1,11 +1,14 @@
-use async_trait::async_trait;
-
-pub mod openid;
+mod driver;
 mod incoming;
 mod outgoing;
 mod request;
 
-pub use self::{incoming::Message as Incoming, outgoing::Message as Outgoing, request::Request};
+pub use self::{
+    driver::{Driver, OpenIDState},
+    incoming::Message as Incoming,
+    outgoing::Message as Outgoing,
+    request::Request,
+};
 use super::{
     capabilities::Capabilities,
     messages::{
@@ -13,12 +16,6 @@ use super::{
     },
 };
 pub use super::{Error, Result};
-
-#[async_trait]
-pub trait Driver {
-    async fn initialise(&mut self, req: CapabilitiesReq) -> Result<Capabilities>;
-    async fn send(&mut self, message: Outgoing) -> Result<()>;
-}
 
 #[allow(missing_debug_implementations)]
 pub struct MessageHandler<T> {
@@ -49,6 +46,18 @@ impl<T: Driver> MessageHandler<T> {
 
             Incoming::GetSupportedApiVersion(r) => {
                 r.reply(Ok(SupportedVersions { versions: SUPPORTED_API_VERSIONS.to_vec() }))?;
+            }
+
+            Incoming::GetOpenID(r) => {
+                let state = self.driver.get_openid(r.clone()).await;
+                r.reply(Ok((&state).into()))?;
+
+                if let OpenIDState::Pending(resolution) = state {
+                    let resolved = resolution.await.map_err(|_| Error::WidgetDied)?;
+                    let (req, resp) = Request::new(resolved.into());
+                    self.driver.send(Outgoing::OpenIDUpdated(req)).await?;
+                    resp.recv().await?;
+                }
             }
         }
 

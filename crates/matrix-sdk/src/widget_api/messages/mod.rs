@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod capabilities;
 pub mod from_widget;
+pub mod openid;
 pub mod to_widget;
 
 #[derive(Serialize, Deserialize, Debug)]

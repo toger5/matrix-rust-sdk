@@ -6,4 +6,5 @@ use super::Request;
 pub enum Message {
     SendMeCapabilities(Request<(), messages::capabilities::Options>),
     CapabilitiesUpdated(Request<messages::capabilities::Options, ()>),
+    OpenIDUpdated(Request<messages::openid::State, ()>),
 }

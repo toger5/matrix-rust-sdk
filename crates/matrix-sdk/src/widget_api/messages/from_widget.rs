@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{
-    super::handler::openid, MatrixEvent, MessageBody, ReadRelationsDirection, SupportedVersions,
-};
+use super::{openid, MatrixEvent, MessageBody, ReadRelationsDirection, SupportedVersions};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action")]
