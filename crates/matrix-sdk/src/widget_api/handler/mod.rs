@@ -1,3 +1,5 @@
+use std::result::Result as StdResult;
+
 mod driver;
 mod incoming;
 mod outgoing;
@@ -10,9 +12,10 @@ pub use self::{
     request::Request,
 };
 use super::{
-    capabilities::Capabilities,
+    capabilities::{Capabilities, ReadEventRequest},
     messages::{
-        capabilities::Options as CapabilitiesReq, SupportedVersions, SUPPORTED_API_VERSIONS,
+        capabilities::Options as CapabilitiesReq, MatrixEvent, SupportedVersions,
+        SUPPORTED_API_VERSIONS,
     },
 };
 pub use super::{Error, Result};
@@ -59,9 +62,26 @@ impl<T: Driver> MessageHandler<T> {
                     resp.recv().await?;
                 }
             }
+
+            Incoming::ReadEvents(r) => {
+                let response = self.read_events(&r).await;
+                r.reply(response)?;
+            }
         }
 
         Ok(())
+    }
+
+    async fn read_events(&mut self, req: &ReadEventRequest) -> StdResult<Vec<MatrixEvent>, &'static str> {
+        let events = self.capabilities
+            .as_mut()
+            .ok_or("Capabilities have not been negotiated")?
+            .event_reader
+            .as_mut()
+            .ok_or("No permissions to read the events")?
+            .read(req.clone())
+            .await;
+        Ok(events)
     }
 
     async fn initialise(&mut self) -> Result<()> {

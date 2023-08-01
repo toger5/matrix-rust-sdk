@@ -1,5 +1,8 @@
 use super::{
-    super::messages::{openid, SupportedVersions},
+    super::{
+        capabilities::ReadEventRequest,
+        messages::{openid, SupportedVersions, MatrixEvent},
+    },
     Request,
 };
 
@@ -8,4 +11,5 @@ pub enum Message {
     GetSupportedApiVersion(Request<(), SupportedVersions>),
     ContentLoaded(Request<(), ()>),
     GetOpenID(Request<openid::Request, openid::State>),
+    ReadEvents(Request<ReadEventRequest, Vec<MatrixEvent>>),
 }
