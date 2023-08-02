@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use super::{
     messages::{
         capabilities::{EventFilter, Options},
-        MatrixEvent, from_widget::SendEventResponse,
+        MatrixEvent, from_widget::{SendEventResponse, SendToDeviceRequest},
     },
     Result,
 };
@@ -13,6 +13,7 @@ use super::{
 pub struct Capabilities {
     pub event_reader: Option<Box<dyn EventReader>>,
     pub event_writer: Option<Box<dyn EventWriter>>,
+    pub to_device_sender: Option<Box<dyn ToDeviceSender>>,
 }
 
 #[async_trait]
@@ -37,6 +38,11 @@ pub trait EventWriter {
 pub struct SendEventRequest {
     pub body: MatrixEvent,
     pub description: EventDescription,
+}
+
+#[async_trait]
+pub trait ToDeviceSender {
+    async fn send(&mut self, req: SendToDeviceRequest) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
