@@ -112,7 +112,7 @@ pub struct MatrixEvent {
     pub event_id: String,
     pub room_id: String,
     pub state_key: Option<String>,
-    pub origin_server_ts: u32,
+    pub origin_server_ts: i64,
     pub content: serde_json::Value,
     pub unsigned: Unsigned,
 }
