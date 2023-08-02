@@ -1,5 +1,6 @@
 use std::result::Result as StdResult;
 
+mod capabilities;
 mod api;
 mod incoming;
 mod outgoing;
@@ -22,8 +23,10 @@ use super::{
         to_widget::CapabilitiesUpdatedRequest,
         SupportedVersions, SUPPORTED_API_VERSIONS, MatrixEvent,
     },
+    SupportedVersions, SUPPORTED_API_VERSIONS,
 };
 pub use super::{Error, Result};
+use capabilities::Capabilities;
 
 #[allow(missing_debug_implementations)]
 pub struct MessageHandler<C, W> {

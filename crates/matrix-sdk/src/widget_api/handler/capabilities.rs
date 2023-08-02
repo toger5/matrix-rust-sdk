@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc::Receiver;
 
-use super::{
+use crate::widget_api::{
     messages::{
         capabilities::Options,
         from_widget::{
@@ -20,8 +20,8 @@ pub struct Capabilities {
     // they contain the type filters for the listeners.
     options: Options,
 
-    pub room_event_listener: Option<Box<Receiver<MatrixEvent>>>,
-    pub state_event_listener: Option<Box<Receiver<MatrixEvent>>>,
+    pub room_event_listener: Option<Receiver<MatrixEvent>>,
+    pub state_event_listener: Option<Receiver<MatrixEvent>>,
 
     pub room_event_reader: Option<Box<dyn EventReader>>,
     pub room_event_sender: Option<Box<dyn EventSender>>,
