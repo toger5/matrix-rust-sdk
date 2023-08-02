@@ -12,10 +12,10 @@ pub use self::{
     request::Request,
 };
 use super::{
-    capabilities::{Capabilities, ReadEventRequest},
+    capabilities::{Capabilities, ReadEventRequest, SendEventRequest},
     messages::{
         capabilities::Options as CapabilitiesReq, MatrixEvent, SupportedVersions,
-        SUPPORTED_API_VERSIONS,
+        SUPPORTED_API_VERSIONS, from_widget::SendEventResponse,
     },
 };
 pub use super::{Error, Result};
@@ -67,21 +67,38 @@ impl<T: Driver> MessageHandler<T> {
                 let response = self.read_events(&r).await;
                 r.reply(response)?;
             }
+
+            Incoming::SendEvent(r) => {
+                let response = self.send_event(&r).await;
+                r.reply(response)?;
+            }
         }
 
         Ok(())
     }
 
     async fn read_events(&mut self, req: &ReadEventRequest) -> StdResult<Vec<MatrixEvent>, &'static str> {
-        let events = self.capabilities
+        self.capabilities
             .as_mut()
             .ok_or("Capabilities have not been negotiated")?
             .event_reader
             .as_mut()
             .ok_or("No permissions to read the events")?
             .read(req.clone())
-            .await;
-        Ok(events)
+            .await
+            .map_err(|_| "Failed to read events")
+    }
+
+    async fn send_event(&mut self, req: &SendEventRequest) -> StdResult<SendEventResponse, &'static str> {
+        self.capabilities
+            .as_mut()
+            .ok_or("Capabilities have not been negotiated")?
+            .event_writer
+            .as_mut()
+            .ok_or("No permissions to write the events")?
+            .write(req.clone())
+            .await
+            .map_err(|_| "Failed to write events")
     }
 
     async fn initialise(&mut self) -> Result<()> {
