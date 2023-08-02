@@ -15,9 +15,12 @@ use super::{
     capabilities::Capabilities,
     messages::{
         capabilities::Options as CapabilitiesReq,
-        from_widget::{ReadEventRequest, SendEventRequest, SendEventResponse, SendToDeviceRequest},
-        to_widget::CapabilitiesUpdatedRequest as CapabilitiesUpdated,
-        MatrixEvent, SupportedVersions, SUPPORTED_API_VERSIONS,
+        from_widget::{
+            ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse,
+            SendToDeviceRequest,
+        },
+        to_widget::CapabilitiesUpdatedRequest,
+        SupportedVersions, SUPPORTED_API_VERSIONS, MatrixEvent,
     },
 };
 pub use super::{Error, Result};
@@ -91,7 +94,7 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
 
         let approved: CapabilitiesReq = self.capabilities.as_ref().unwrap().into();
         self.widget
-            .send(outgoing::CapabilitiesUpdated(CapabilitiesUpdated { requested, approved }))
+            .send(outgoing::CapabilitiesUpdated(CapabilitiesUpdatedRequest { requested, approved }))
             .await?;
 
         Ok(())
@@ -102,7 +105,7 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
         req: &ReadEventRequest,
     ) -> StdResult<Vec<MatrixEvent>, &'static str> {
         self.capabilities()?
-            .event_reader
+            .room_event_reader
             .as_mut()
             .ok_or("No permissions to read the events")?
             .read(req.clone())
@@ -115,10 +118,10 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
         req: &SendEventRequest,
     ) -> StdResult<SendEventResponse, &'static str> {
         self.capabilities()?
-            .event_writer
+            .room_event_sender
             .as_mut()
             .ok_or("No permissions to write the events")?
-            .write(req.clone())
+            .send(req.clone())
             .await
             .map_err(|_| "Failed to write events")
     }

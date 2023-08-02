@@ -1,9 +1,10 @@
-use crate::widget_api::messages::from_widget::{
-    SendEventRequest, SendEventResponse, SendToDeviceRequest,
+use crate::widget_api::messages::{
+    from_widget::{ReadEventRequest, SendEventRequest, SendEventResponse, SendToDeviceRequest},
+    MatrixEvent,
 };
 
 use super::{
-    super::messages::{from_widget::ReadEventRequest, openid, MatrixEvent, SupportedVersions},
+    super::messages::{openid, SupportedVersions},
     Request,
 };
 
