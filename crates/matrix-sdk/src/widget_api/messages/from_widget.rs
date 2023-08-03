@@ -34,9 +34,9 @@ pub struct SendToDeviceRequest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SendEventRequest {
     #[serde(rename = "type")]
-    message_type: String,
-    state_key: Option<String>,
-    content: serde_json::Value,
+    pub message_type: String,
+    pub state_key: Option<String>,
+    pub content: serde_json::Value,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SendEventResponse {

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use super::MatrixEvent;
+
 #[derive(Debug, Default, Clone)]
 pub struct Options {
     pub screenshot: bool,
@@ -108,18 +110,78 @@ impl<'de> Deserialize<'de> for Options {
 
 // Event Filters
 
+pub trait Filter {
+    fn allow_event(
+        &self,
+        message_type: &String,
+        state_key: &Option<String>,
+        content: &serde_json::Value,
+    ) -> bool;
+}
 #[derive(Debug, Default, Clone)]
 pub struct EventFilter {
     event_type: String,
     msgtype: Option<String>,
 }
-
-#[derive(Debug, Default)]
+impl Filter for EventFilter {
+    fn allow_event(
+        &self,
+        message_type: &String,
+        state_key: &Option<String>,
+        content: &serde_json::Value,
+    ) -> bool {
+        if message_type == &self.event_type {
+            if let Some(msgtype) = self.msgtype.clone() {
+                if message_type == "m.room.message" {
+                    if content
+                        .get("msgtype")
+                        .unwrap_or(&serde_json::to_value("").unwrap())
+                        .to_string()
+                        == msgtype
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+}
+#[derive(Debug, Default, Clone)]
+pub struct EventFilterAllowAll {}
+impl Filter for EventFilterAllowAll {
+    fn allow_event(
+        &self,
+        message_type: &String,
+        state_key: &Option<String>,
+        content: &serde_json::Value,
+    ) -> bool {
+        true
+    }
+}
+#[derive(Debug, Default, Clone)]
 pub struct StateEventFilter {
     event_type: String,
     state_key: Option<String>,
 }
-
+impl Filter for StateEventFilter {
+    fn allow_event(
+        &self,
+        message_type: &String,
+        state_key: &Option<String>,
+        content: &serde_json::Value,
+    ) -> bool {
+        if message_type == &self.event_type {
+            if let (Some(filter_key), Some(ev_key)) = (self.state_key.clone(), state_key.clone()) {
+                return filter_key == ev_key;
+            }
+            return true;
+        }
+        return false;
+    }
+}
 impl Serialize for EventFilter {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut string = format!("{}", self.event_type);

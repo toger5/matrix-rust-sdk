@@ -15,6 +15,7 @@ use crate::widget_api::{
 
 /// A wrapper for the matrix client that only exposes what is available through the capabilities.
 #[allow(missing_debug_implementations)]
+#[derive(Default)]
 pub struct Capabilities {
     // The options are a private member,
     // they contain the type filters for the listeners.
@@ -36,17 +37,17 @@ pub struct Capabilities {
 
 #[async_trait]
 pub trait EventReader {
-    async fn read(&mut self, req: ReadEventRequest) -> Result<ReadEventResponse>;
+    async fn read(&self, req: ReadEventRequest) -> Result<ReadEventResponse>;
 }
 
 #[async_trait]
 pub trait EventSender {
-    async fn send(&mut self, req: SendEventRequest) -> Result<SendEventResponse>;
+    async fn send(&self, req: SendEventRequest) -> Result<SendEventResponse>;
 }
 
 #[async_trait]
 pub trait ToDeviceSender {
-    async fn send(&mut self, req: SendToDeviceRequest) -> Result<()>;
+    async fn send(&self, req: SendToDeviceRequest) -> Result<()>;
 }
 
 impl<'t> From<&'t Capabilities> for Options {

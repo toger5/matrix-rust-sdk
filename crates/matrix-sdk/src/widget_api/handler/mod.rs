@@ -7,7 +7,8 @@ mod outgoing;
 mod request;
 
 pub use self::{
-    driver::{Driver, OpenIDState},
+    capabilities::{Capabilities, EventReader, EventSender},
+    driver::{Driver, OpenIDState, OpenIDResult},
     incoming::Message as Incoming,
     outgoing::Message as Outgoing,
     request::Request,
