@@ -35,7 +35,7 @@ pub struct SendToDeviceRequest {
 pub struct SendEventRequest {
     #[serde(rename = "type")]
     message_type: String,
-    state_key: String,
+    state_key: Option<String>,
     content: serde_json::Value,
 }
 
@@ -48,9 +48,9 @@ pub struct SendEventResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReadEventRequest {
     #[serde(rename = "type")]
-    pub message_type: String,
-    pub state_key: String,
-    pub limit: usize,
+    message_type: String,
+    state_key: Option<String>,
+    limit: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
