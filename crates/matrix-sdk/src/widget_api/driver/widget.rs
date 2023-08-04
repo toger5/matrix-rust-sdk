@@ -1,7 +1,5 @@
-use crate::widget_api::messages;
 use super::handler::Result;
-
-
+use crate::widget_api::messages;
 
 // the Widget trait that needs to be implemented in the native client
 pub trait Widget {

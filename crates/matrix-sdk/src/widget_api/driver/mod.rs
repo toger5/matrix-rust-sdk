@@ -1,14 +1,13 @@
+use self::widget::Widget;
+use super::{
+    handler::{self, Capabilities, OpenIDState, Outgoing, Result},
+    messages::{capabilities::Options, openid},
+    Error,
+};
+use crate::room::Joined;
 use async_trait::async_trait;
 
-use super::handler::{self, Capabilities, OpenIDState};
-use super::handler::{Outgoing, Result};
-use super::messages::capabilities::Options;
-use super::messages::openid;
-use super::Error;
-use crate::room::Joined;
-
 pub mod widget;
-use widget::Widget;
 
 #[derive(Debug)]
 pub struct Driver<W: Widget> {
@@ -32,7 +31,7 @@ impl<W: Widget> handler::Driver for Driver<W> {
         //     widget.show_get_openid_dialog().await?;
         //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
         // }
-        
+
         let user_id = self.matrix_room.client.user_id();
         if user_id == None {
             return OpenIDState::Resolved(Err(Error::WidgetError(
@@ -45,24 +44,22 @@ impl<W: Widget> handler::Driver for Driver<W> {
             ruma::api::client::account::request_openid_token::v3::Request::new(user_id.to_owned());
         let res = self.matrix_room.client.send(request, None).await;
 
-        if let Err(err) = res {
-            return OpenIDState::Resolved(Err(Error::WidgetError(
+        let state = match res {
+            Err(err) => Err(Error::WidgetError(
                 format!(
                     "Failed to get an open id token from the homeserver. Because of Http Error: {}",
                     err.to_string()
                 )
                 .to_owned(),
-            )));
+            )),
+            Ok(res) => Ok(openid::Response {
+                id: req.id,
+                token: res.access_token,
+                expires_in_seconds: res.expires_in.as_secs() as usize,
+                server: res.matrix_server_name.to_string(),
+                kind: res.token_type.to_string(),
+            }),
         };
-
-        let res = res.unwrap();
-        let openid_response = openid::Response {
-            id: req.id,
-            token: res.access_token,
-            expires_in_seconds: res.expires_in.as_secs() as usize,
-            server: res.matrix_server_name.to_string(),
-            kind: res.token_type.to_string(),
-        };
-        OpenIDState::Resolved(Ok(openid_response))
+        OpenIDState::Resolved(state)
     }
 }
