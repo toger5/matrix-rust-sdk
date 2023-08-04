@@ -108,7 +108,7 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
         req: &ReadEventRequest,
     ) -> StdResult<Vec<MatrixEvent>, &'static str> {
         self.capabilities()?
-            .room_event_reader
+            .event_reader
             .as_mut()
             .ok_or("No permissions to read the events")?
             .read(req.clone())
@@ -121,7 +121,7 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
         req: &SendEventRequest,
     ) -> StdResult<SendEventResponse, &'static str> {
         self.capabilities()?
-            .room_event_sender
+            .event_sender
             .as_mut()
             .ok_or("No permissions to write the events")?
             .send(req.clone())
