@@ -1,6 +1,6 @@
 use self::widget::Widget;
 use super::{
-    handler::{self, OpenIDState},
+    handler::{self, Capabilities, OpenIDState},
     messages::{
         capabilities::{EventFilter, Filter, Options},
         from_widget::{SendEventRequest, SendEventResponse},
@@ -8,8 +8,10 @@ use super::{
     },
     {Error, Result},
 };
-use crate::room::Joined;
+use crate::{event_handler::EventHandlerHandle, room::Joined};
 use async_trait::async_trait;
+use ruma::{events::AnySyncTimelineEvent, serde::Raw};
+use tokio::sync::mpsc;
 
 pub mod widget;
 
@@ -22,28 +24,24 @@ pub struct Driver<W: Widget> {
 
 #[async_trait(?Send)]
 impl<W: Widget> handler::Driver for Driver<W> {
-    async fn send(&self, message: Outgoing) -> Result<()> {
+    async fn send(&self, message: handler::Outgoing) -> Result<()> {
         // let message_str = serde_json::to_string(&message)?;
-        self.widget.send_widget_message("TODO get message string from outgoing");
+        let _ = self.widget.send_widget_message("TODO get message string from outgoing");
         Result::Ok(())
     }
-    fn initialise(&self, options: Options) -> Result<handler::Capabilities> {
-        let mut capabilities = handler::Capabilities::new(options.clone());
+    fn initialise(&mut self, options: Options) -> Result<Capabilities> {
+        let mut capabilities = Capabilities::default();
 
-        let room_event_sender_filter = options.send_room_event.as_ref().unwrap_or(&vec![]).to_vec();
-        if room_event_sender_filter.len() > 0 {
-            capabilities.room_event_sender = Some(Box::new(RoomEventSender {
-                room: self.matrix_room.clone(),
-                filter: room_event_sender_filter,
-            }))
-        }
-
-        capabilities.room_event_listener = self.build_room_event_listener(&options.read_room_event);
+        capabilities.event_listener =
+            self.build_event_listener(&options.read_room_event, &options.read_state_event);
+        capabilities.event_sender =
+            self.build_event_sender(&options.send_room_event, &options.send_state_event);
 
         Result::Ok(capabilities)
     }
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
         // TODO: make the client ask the user first.
+        // We wont care about this for Element call -> Element X
         // if !self.has_open_id_user_permission() {
         //     let (rx,tx) = tokio::oneshot::channel();
         //     return OpenIDState::Pending(tx);
@@ -82,52 +80,87 @@ impl<W: Widget> handler::Driver for Driver<W> {
         OpenIDState::Resolved(state)
     }
 }
-struct RoomEventSender {
+#[derive(Debug)]
+pub struct EventSender {
     room: Joined,
-    filter: Vec<EventFilter>,
+    state_filter: Vec<EventFilter>,
+    room_filter: Vec<EventFilter>,
 }
 #[async_trait]
-impl handler::EventSender for RoomEventSender {
+impl handler::EventSender for EventSender {
     async fn send(&self, req: SendEventRequest) -> Result<SendEventResponse> {
-        if self
-            .filter
-            .iter()
-            .any(|f| f.allow_event(&req.message_type, &req.state_key, &req.content))
-        {
-            let _ = self.room.send_raw(req.content, &req.message_type, None).await;
-            Ok(SendEventResponse { room_id: "".to_string(), event_id: "".to_string() })
+        let filter_fn =
+            |f: &EventFilter| f.allow_event(&req.message_type, &req.state_key, &req.content);
+
+        let mut filter = self.state_filter.clone();
+        filter.append(&mut self.room_filter.clone());
+
+        if filter.iter().any(filter_fn) {
+            match req.state_key {
+                Some(state_key) => {
+                    match self
+                        .room
+                        .send_state_event_raw(req.content, &req.message_type, &state_key)
+                        .await
+                    {
+                        Ok(send_res) => Ok(SendEventResponse {
+                            room_id: self.room.room_id().to_string(),
+                            event_id: send_res.event_id.to_string(),
+                        }),
+                        Err(err) => Err(Error::WidgetError(format!(
+                            "Could not send event with error: {}",
+                            err
+                        ))),
+                    }
+                }
+                None => match self.room.send_raw(req.content, &req.message_type, None).await {
+                    Ok(send_res) => Ok(SendEventResponse {
+                        room_id: self.room.room_id().to_string(),
+                        event_id: send_res.event_id.to_string(),
+                    }),
+                    Err(err) => {
+                        Err(Error::WidgetError(format!("Could not send event with error: {}", err)))
+                    }
+                },
+            }
         } else {
             Err(Error::WidgetError(format!(
-                "No capability to send room event of type {} with key {}",
-                req.message_type,
-                req.state_key.unwrap_or("undefined".to_owned())
+                "No capability to send event of type {} with state key {} (for room events the state key is undefined if no state key is shown the state key is \"\")",
+                req.message_type, req.state_key.unwrap_or("undefined".to_string())
             )))
         }
     }
 }
 impl<W: Widget> Driver<W> {
-    fn build_room_event_sender(
+    fn build_event_sender(
         &self,
-        send_filter: &Option<Vec<EventFilter>>,
-    ) -> Option<Box<RoomEventSender>> {
-        let filter = send_filter.as_ref().unwrap_or(&vec![]).to_vec();
-        let mut sender = None;
+        room_filter: &Vec<EventFilter>,
+        state_filter: &Vec<EventFilter>,
+    ) -> Option<Box<dyn handler::EventSender>> {
+        let mut filter = state_filter.clone();
+        filter.append(&mut room_filter.clone());
+
         if filter.len() > 0 {
-            sender = Some(Box::new(RoomEventSender { room: self.matrix_room.clone(), filter }))
+            let s: Box<dyn handler::EventSender> = Box::new(EventSender {
+                room: self.matrix_room.clone(),
+                room_filter: room_filter.clone(),
+                state_filter: state_filter.clone(),
+            });
+            return Some(s);
         }
-        sender
+        None
     }
 
-    fn build_room_event_listener(
-        &self,
-        receive_filters: &Option<Vec<EventFilter>>,
+    fn build_event_listener(
+        &mut self,
+        room_filter: &Vec<EventFilter>,
+        state_filter: &Vec<EventFilter>,
     ) -> Option<mpsc::UnboundedReceiver<MatrixEvent>> {
-        let mut listener = None;
-        let filter = receive_filters.as_ref().unwrap_or(&vec![]).to_vec();
+        let (tx, rx) = mpsc::unbounded_channel::<MatrixEvent>();
+        let mut filter = room_filter.clone();
+        filter.append(&mut state_filter.clone());
 
         if filter.len() > 0 {
-            let (tx, rx) = mpsc::unbounded_channel::<MatrixEvent>();
-
             let callback = move |ev: Raw<AnySyncTimelineEvent>| {
                 let filter = filter.clone();
                 let tx = tx.clone();
@@ -146,10 +179,10 @@ impl<W: Widget> Driver<W> {
                     }
                 }
             };
-
-            self.matrix_room.add_event_handler(callback);
-            listener = Some(rx);
+            self.add_event_handler_handle = Some(self.matrix_room.add_event_handler(callback));
+            return Some(rx);
         }
-        listener
+
+        None
     }
 }

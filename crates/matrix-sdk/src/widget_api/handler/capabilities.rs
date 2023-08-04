@@ -1,7 +1,8 @@
 use async_trait::async_trait;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 use crate::widget_api::{
+    self,
     messages::{
         capabilities::{EventFilter, Options},
         from_widget::{
@@ -25,19 +26,14 @@ pub struct Capabilities {
     filter_read_state_event: Vec<EventFilter>,
 
     // Room and state events use the same sender, reader, listener
-    // on the rust-sdk side room and state events dont make a difference for the transport. 
+    // on the rust-sdk side room and state events dont make a difference for the transport.
     // It is the widgets responsibility to differenciate and react to them accordingly.
-    pub event_listener: Option<Receiver<MatrixEvent>>,
+    pub event_listener: Option<UnboundedReceiver<MatrixEvent>>,
 
     pub event_reader: Option<Box<dyn EventReader>>,
     pub event_sender: Option<Box<dyn EventSender>>,
 
     pub to_device_sender: Option<Box<dyn ToDeviceSender>>,
-}
-impl Capabilities {
-    pub fn new(options: Options) -> Self {
-        Capabilities { options, ..Default::default() }
-    }
 }
 
 #[async_trait]

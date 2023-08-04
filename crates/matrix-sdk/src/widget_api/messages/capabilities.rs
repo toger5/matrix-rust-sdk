@@ -148,15 +148,27 @@ impl Filter for EventFilter {
     }
 }
 #[derive(Debug, Default, Clone)]
-pub struct EventFilterAllowAll {}
-impl Filter for EventFilterAllowAll {
+pub struct EventFilterAllowAllState {}
+impl Filter for EventFilterAllowAllState {
     fn allow_event(
         &self,
         message_type: &String,
         state_key: &Option<String>,
         content: &serde_json::Value,
     ) -> bool {
-        true
+        return state_key.is_some();
+    }
+}
+#[derive(Debug, Default, Clone)]
+pub struct EventFilterAllowAllRoom {}
+impl Filter for EventFilterAllowAllRoom {
+    fn allow_event(
+        &self,
+        message_type: &String,
+        state_key: &Option<String>,
+        content: &serde_json::Value,
+    ) -> bool {
+        return state_key.is_none();
     }
 }
 #[derive(Debug, Default, Clone)]

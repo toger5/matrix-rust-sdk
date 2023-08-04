@@ -8,11 +8,10 @@ mod request;
 
 pub use self::{
     capabilities::{Capabilities, EventReader, EventSender},
-    driver::{Driver, OpenIDState, OpenIDResult},
+    driver::{Driver, OpenIDResult, OpenIDState},
     incoming::Message as Incoming,
     outgoing::Message as Outgoing,
     request::Request,
-    capabilities::Capabilities
 };
 use super::messages::{
     capabilities::Options as CapabilitiesReq,

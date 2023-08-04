@@ -9,7 +9,7 @@ use super::{
 
 #[async_trait(?Send)]
 pub trait Driver {
-    fn initialise(&self, req: CapabilitiesReq) -> Result<Capabilities>;
+    fn initialise(&mut self, req: CapabilitiesReq) -> Result<Capabilities>;
     async fn send(&self, message: Outgoing) -> Result<()>;
     async fn get_openid(&self, req: openid::Request) -> OpenIDState;
 }
