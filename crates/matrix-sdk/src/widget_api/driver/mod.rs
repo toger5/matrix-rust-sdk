@@ -25,9 +25,24 @@ impl<W: Widget> handler::Driver for Driver<W> {
     }
 
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
-        let userId = self.matrix_room.client.user_id().unwrap();
+        // TODO: make the client ask the user first.
+        // if !self.has_open_id_user_permission() {
+        //     let (rx,tx) = tokio::oneshot::channel();
+        //     return OpenIDState::Pending(tx);
+        //     widget.show_get_openid_dialog().await?;
+        //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
+        // }
+        
+        let user_id = self.matrix_room.client.user_id();
+        if user_id == None {
+            return OpenIDState::Resolved(Err(Error::WidgetError(
+                "Failed to get an open id token from the homeserver. Because the userId is not available".to_owned()
+            )));
+        }
+        let user_id = user_id.unwrap();
+
         let request =
-            ruma::api::client::account::request_openid_token::v3::Request::new(userId.to_owned());
+            ruma::api::client::account::request_openid_token::v3::Request::new(user_id.to_owned());
         let res = self.matrix_room.client.send(request, None).await;
 
         if let Err(err) = res {
