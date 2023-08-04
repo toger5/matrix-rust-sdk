@@ -5,14 +5,15 @@ use super::{
     Error,
 };
 use crate::room::Joined;
+pub mod widget;
+
 use async_trait::async_trait;
 use ruma::events::AnySyncTimelineEvent;
 use ruma::serde::Raw;
 use tokio::sync::{mpsc, Mutex};
 
-pub mod widget;
-
 #[derive(Debug)]
+
 pub struct Driver<W: Widget> {
     pub matrix_room: Joined,
     pub widget: W,

@@ -1,7 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::MatrixEvent;
-
 #[derive(Debug, Default, Clone)]
 pub struct Options {
     pub screenshot: bool,
