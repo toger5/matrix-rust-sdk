@@ -11,6 +11,7 @@ pub use self::{
     incoming::Message as Incoming,
     outgoing::Message as Outgoing,
     request::Request,
+    capabilities::Capabilities
 };
 use super::messages::{
     capabilities::Options as CapabilitiesReq,
@@ -21,7 +22,6 @@ use super::messages::{
     SupportedVersions, SUPPORTED_API_VERSIONS,
 };
 pub use super::{Error, Result};
-use capabilities::Capabilities;
 
 #[allow(missing_debug_implementations)]
 pub struct MessageHandler<T> {

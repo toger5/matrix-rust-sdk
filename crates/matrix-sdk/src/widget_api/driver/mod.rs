@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 
-use super::capabilities::Capabilities;
-use super::handler::{self, OpenIDState};
+use super::handler::{self, Capabilities, OpenIDState};
 use super::handler::{Outgoing, Result};
 use super::messages::capabilities::Options;
 use super::messages::openid;
