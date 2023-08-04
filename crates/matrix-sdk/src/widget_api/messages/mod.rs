@@ -109,7 +109,7 @@ pub struct MatrixEvent {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct Unsigned {
+pub struct Unsigned {
     age: u32,
 }
 

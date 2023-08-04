@@ -20,15 +20,13 @@ pub struct Driver<W: Widget> {
     add_event_handler_handle: Option<EventHandlerHandle>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<W: Widget> handler::Driver for Driver<W> {
-    // was initially defined as async by Daniel but for simplicity Timo made it sync for now
     async fn send(&self, message: Outgoing) -> Result<()> {
         // let message_str = serde_json::to_string(&message)?;
         self.widget.send_widget_message("TODO get message string from outgoing");
         Result::Ok(())
     }
-    // was initially defined as async by Daniel but for simplicity Timo made it sync for now
     fn initialise(&self, options: Options) -> Result<handler::Capabilities> {
         let mut capabilities = handler::Capabilities::new(options.clone());
 
@@ -96,7 +94,7 @@ impl handler::EventSender for RoomEventSender {
             .iter()
             .any(|f| f.allow_event(&req.message_type, &req.state_key, &req.content))
         {
-            self.room.send_raw(req.content, &req.message_type, None);
+            let _ = self.room.send_raw(req.content, &req.message_type, None).await;
             Ok(SendEventResponse { room_id: "".to_string(), event_id: "".to_string() })
         } else {
             Err(Error::WidgetError(format!(
