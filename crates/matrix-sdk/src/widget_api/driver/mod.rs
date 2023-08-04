@@ -13,7 +13,6 @@ use ruma::serde::Raw;
 use tokio::sync::{mpsc, Mutex};
 
 #[derive(Debug)]
-
 pub struct Driver<W: Widget> {
     pub matrix_room: Joined,
     pub widget: W,
