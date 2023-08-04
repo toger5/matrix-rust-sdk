@@ -40,8 +40,8 @@ pub struct SendEventRequest {
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SendEventResponse {
-    room_id: String,
-    event_id: String,
+    pub room_id: String,
+    pub event_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

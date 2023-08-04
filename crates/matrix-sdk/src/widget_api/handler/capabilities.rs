@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 
 use crate::widget_api::{
     messages::{
@@ -33,6 +33,11 @@ pub struct Capabilities {
     pub event_sender: Option<Box<dyn EventSender>>,
 
     pub to_device_sender: Option<Box<dyn ToDeviceSender>>,
+}
+impl Capabilities{
+    pub fn new(options: Options)-> Self{
+        Capabilities{options, ..Default::default()}
+    }
 }
 
 #[async_trait]

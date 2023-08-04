@@ -7,7 +7,7 @@ use super::{
     Outgoing, Result,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Driver {
     fn initialise(&self, req: CapabilitiesReq) -> Result<Capabilities>;
     async fn send(&self, message: Outgoing) -> Result<()>;
