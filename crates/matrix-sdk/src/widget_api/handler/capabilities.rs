@@ -1,8 +1,7 @@
 use async_trait::async_trait;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::widget_api::{
-    self,
     messages::{
         capabilities::{EventFilter, Options},
         from_widget::{
@@ -32,8 +31,8 @@ pub struct Capabilities {
 
     pub event_reader: Option<Box<dyn EventReader>>,
     pub event_sender: Option<Box<dyn EventSender>>,
-
-    pub to_device_sender: Option<Box<dyn ToDeviceSender>>,
+    // TODO implement to_device_sender (not required for EC->EX)
+    // pub to_device_sender: Option<Box<dyn ToDeviceSender>>,
 }
 
 #[async_trait]

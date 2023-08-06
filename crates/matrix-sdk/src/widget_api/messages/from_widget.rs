@@ -47,9 +47,9 @@ pub struct SendEventResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReadEventRequest {
     #[serde(rename = "type")]
-    message_type: String,
-    state_key: Option<String>,
-    limit: u32,
+    pub message_type: String,
+    pub state_key: Option<String>,
+    pub limit: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
