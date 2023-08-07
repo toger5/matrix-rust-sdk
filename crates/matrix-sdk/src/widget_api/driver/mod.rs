@@ -49,7 +49,10 @@ impl<W: Widget> handler::Driver for Driver<W> {
         // if !self.has_open_id_user_permission() {
         //     let (rx,tx) = tokio::oneshot::channel();
         //     return OpenIDState::Pending(tx);
-        //     widget.show_get_openid_dialog().await?;
+        //     let permissions = widget.openid_permissions().await?;
+        //     if (permissions.should_cache){
+        //        self.auto_allow_openid_token(permission.is_allowed);
+        //     }
         //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
         // }
 
