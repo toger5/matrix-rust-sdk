@@ -53,7 +53,8 @@ impl<W: Widget> handler::Driver for Driver<W> {
         //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
         // }
         // this logic might be better suited for the handler actually. And get_openid should only be called if the handler
-        // already showed the get_open_id_dialog
+        // already showed the get_open_id_dialog BUT we dont have access to the widget, so maybe it is actually better to use
+        // the driver here.
 
         let user_id = self.matrix_room.client.user_id();
         if user_id == None {
@@ -95,7 +96,7 @@ pub struct EventReader {
 #[async_trait]
 impl handler::EventReader for EventReader {
     async fn read(&self, req: ReadEventRequest) -> Result<ReadEventResponse> {
-        let mut options = {
+        let options = {
             let mut o = MessagesOptions::backward();
             o.limit = req.limit.into();
             o.filter = {

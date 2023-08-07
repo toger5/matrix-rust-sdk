@@ -164,9 +164,9 @@ pub struct EventFilterAllowAllRoom {}
 impl Filter for EventFilterAllowAllRoom {
     fn allow_event(
         &self,
-        message_type: &String,
+        _message_type: &String,
         state_key: &Option<String>,
-        content: &serde_json::Value,
+        _content: &serde_json::Value,
     ) -> bool {
         return state_key.is_none();
     }
@@ -181,7 +181,7 @@ impl Filter for StateEventFilter {
         &self,
         message_type: &String,
         state_key: &Option<String>,
-        content: &serde_json::Value,
+        _content: &serde_json::Value,
     ) -> bool {
         if message_type == &self.event_type {
             if let (Some(filter_key), Some(ev_key)) = (self.state_key.clone(), state_key.clone()) {

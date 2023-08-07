@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::handler::Result;
-use crate::widget_api::messages::{self, capabilities};
+use crate::widget_api::messages::capabilities;
 
 // the Widget trait that needs to be implemented in the native client
 #[async_trait]
