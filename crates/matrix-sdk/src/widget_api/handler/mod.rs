@@ -1,32 +1,25 @@
 use std::result::Result as StdResult;
 
-mod capabilities;
 mod api;
+mod capabilities;
 mod incoming;
 mod outgoing;
 mod request;
 
 pub use self::{
     api::{Client, OpenIDState, Widget},
+    capabilities::Capabilities,
     incoming::Message as Incoming,
     outgoing::OutgoingMessage,
     request::Request,
 };
-use super::{
-    capabilities::Capabilities,
-    messages::{
-        capabilities::Options as CapabilitiesReq,
-        from_widget::{
-            ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse,
-            SendToDeviceRequest,
-        },
-        to_widget::CapabilitiesUpdatedRequest,
-        SupportedVersions, SUPPORTED_API_VERSIONS, MatrixEvent,
-    },
-    SupportedVersions, SUPPORTED_API_VERSIONS,
+use super::messages::{
+    capabilities::Options as CapabilitiesReq,
+    from_widget::{ReadEventRequest, SendEventRequest, SendEventResponse},
+    to_widget::CapabilitiesUpdatedRequest,
+    MatrixEvent, SupportedVersions, SUPPORTED_API_VERSIONS,
 };
 pub use super::{Error, Result};
-use capabilities::Capabilities;
 
 #[allow(missing_debug_implementations)]
 pub struct MessageHandler<C, W> {
@@ -81,8 +74,8 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
             }
 
             Incoming::SendToDeviceRequest(r) => {
-                let response = self.send_to_device(&r).await;
-                r.reply(response)?;
+                // let response = self.send_to_device(&r).await;
+                // r.reply(response)?;
             }
         }
 
@@ -129,15 +122,15 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
             .map_err(|_| "Failed to write events")
     }
 
-    async fn send_to_device(&mut self, req: &SendToDeviceRequest) -> StdResult<(), &'static str> {
-        self.capabilities()?
-            .to_device_sender
-            .as_mut()
-            .ok_or("No permissions to send to device messages")?
-            .send(req.clone())
-            .await
-            .map_err(|_| "Failed to write events")
-    }
+    // async fn send_to_device(&mut self, req: &SendToDeviceRequest) -> StdResult<(), &'static str> {
+    //     self.capabilities()?
+    //         .to_device_sender
+    //         .as_mut()
+    //         .ok_or("No permissions to send to device messages")?
+    //         .send(req.clone())
+    //         .await
+    //         .map_err(|_| "Failed to write events")
+    // }
 
     fn capabilities(&mut self) -> StdResult<&mut Capabilities, &'static str> {
         self.capabilities.as_mut().ok_or("Capabilities have not been negotiated")

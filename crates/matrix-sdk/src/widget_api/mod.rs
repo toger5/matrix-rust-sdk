@@ -2,7 +2,6 @@
 #![allow(missing_docs)]
 
 pub mod api;
-pub mod capabilities;
 pub mod error;
 pub mod handler;
 pub mod messages;

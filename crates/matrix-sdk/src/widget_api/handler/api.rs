@@ -2,10 +2,8 @@ use async_trait::async_trait;
 use tokio::sync::oneshot::Receiver;
 
 use super::{
-    super::{
-        capabilities::Capabilities,
-        messages::{capabilities::Options as CapabilitiesReq, openid},
-    },
+    super::messages::{capabilities::Options as CapabilitiesReq, openid},
+    capabilities::Capabilities,
     OutgoingMessage, Result,
 };
 
@@ -27,7 +25,7 @@ pub enum OpenIDState {
     Pending(Receiver<OpenIDResult>),
 }
 
-pub type OpenIDResult = Option<openid::Response>;
+pub type OpenIDResult = Result<openid::Response>;
 
 impl<'t> From<&'t OpenIDState> for openid::State {
     fn from(state: &'t OpenIDState) -> Self {
@@ -41,8 +39,8 @@ impl<'t> From<&'t OpenIDState> for openid::State {
 impl From<OpenIDResult> for openid::State {
     fn from(result: OpenIDResult) -> Self {
         match result {
-            Some(response) => openid::State::Allowed(response),
-            None => openid::State::Blocked,
+            Ok(response) => openid::State::Allowed(response),
+            Err(_) => openid::State::Blocked,
         }
     }
 }
