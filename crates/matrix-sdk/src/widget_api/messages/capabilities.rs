@@ -68,61 +68,61 @@ impl<'de> Deserialize<'de> for Options {
         D: Deserializer<'de>,
     {
         let capability_list = Vec::<String>::deserialize(deserializer)?;
-        let mut capbilities = Options::default();
+        let mut capabilities = Options::default();
 
         for capability in capability_list {
             if capability == "m.capability.screenshot" {
-                capbilities.screenshot = true;
+                capabilities.screenshot = true;
             }
             if capability == "m.always_on_screen" {
-                capbilities.always_on_screen = true;
+                capabilities.always_on_screen = true;
             }
             if capability == "io.element.requires_client" {
-                capbilities.requires_client = true;
+                capabilities.requires_client = true;
             }
             if capability.starts_with(SEND_EVENT) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capbilities
+                    capabilities
                         .send_filter
                         .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
                 } else {
-                    capbilities.send_filter.push(Filter::AllowAllTimeline);
+                    capabilities.send_filter.push(Filter::AllowAllTimeline);
                 }
             }
             if capability.starts_with(READ_EVENT) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capbilities
+                    capabilities
                         .read_filter
                         .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
                 } else {
-                    capbilities.read_filter.push(Filter::AllowAllTimeline);
+                    capabilities.read_filter.push(Filter::AllowAllTimeline);
                 }
             }
             if capability.starts_with(SEND_STATE) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capbilities
+                    capabilities
                         .send_filter
                         .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
                 } else {
-                    capbilities.send_filter.push(Filter::AllowAllState);
+                    capabilities.send_filter.push(Filter::AllowAllState);
                 }
             }
             if capability.starts_with(READ_STATE) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capbilities
+                    capabilities
                         .read_filter
                         .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
                 } else {
-                    capbilities.read_filter.push(Filter::AllowAllState);
+                    capabilities.read_filter.push(Filter::AllowAllState);
                 }
             }
         }
 
-        Ok(capbilities)
+        Ok(capabilities)
     }
 }
 
