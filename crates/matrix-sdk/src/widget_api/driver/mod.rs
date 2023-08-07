@@ -30,7 +30,9 @@ impl<W: Widget> handler::Driver for Driver<W> {
         let _ = self.widget.send_widget_message("TODO get message string from outgoing");
         Result::Ok(())
     }
-    fn initialise(&mut self, options: Options) -> Result<Capabilities> {
+    async fn initialise(&mut self, options: Options) -> Result<Capabilities> {
+        let options = self.widget.show_capability_dialog(options).await?;
+
         let mut capabilities = Capabilities::default();
 
         capabilities.event_listener =
