@@ -54,7 +54,7 @@ pub struct ReadEventRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReadEventResponse {
-    events: Vec<MatrixEvent>,
+    pub events: Vec<MatrixEvent>,
 }
 
 // MSC3869
