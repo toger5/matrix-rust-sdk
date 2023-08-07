@@ -2,7 +2,7 @@ use self::widget::Widget;
 use super::{
     handler::{self, Capabilities, OpenIDState},
     messages::{
-        capabilities::{EventFilter, Filter, Options},
+        capabilities::{Filter, Options, EventFilter},
         from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
         {openid, MatrixEvent},
     },
@@ -35,12 +35,9 @@ impl<W: Widget> handler::Driver for Driver<W> {
 
         let mut capabilities = Capabilities::default();
 
-        capabilities.event_listener =
-            self.build_event_listener(&options.read_room_event, &options.read_state_event);
-        capabilities.event_sender =
-            self.build_event_sender(&options.send_room_event, &options.send_state_event);
-        capabilities.event_reader =
-            self.build_event_reader(&options.read_room_event, &options.read_state_event);
+        capabilities.event_listener = self.build_event_listener(&options.read_filter);
+        capabilities.event_sender = self.build_event_sender(&options.send_filter);
+        capabilities.event_reader = self.build_event_reader(&options.read_filter);
         Result::Ok(capabilities)
     }
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
@@ -91,10 +88,13 @@ impl<W: Widget> handler::Driver for Driver<W> {
 #[derive(Debug)]
 pub struct EventReader {
     room: Joined,
-    filter: Vec<EventFilter>,
+    filter: Vec<Filter>,
 }
 #[async_trait]
 impl handler::EventReader for EventReader {
+    fn get_filter(&self) -> &Vec<Filter> {
+        &self.filter
+    }
     async fn read(&self, req: ReadEventRequest) -> Result<ReadEventResponse> {
         let options = {
             let mut o = MessagesOptions::backward();
@@ -117,9 +117,8 @@ impl handler::EventReader for EventReader {
                 let filtered_messages = all_messages
                     .into_iter()
                     .filter(|m| {
-                        let filter_fn = |f: &EventFilter| {
-                            f.allow_event(&m.event_type, &m.state_key, &m.content)
-                        };
+                        let filter_fn =
+                            |f: &Filter| f.allow_event(&m.event_type, &m.state_key, &m.content);
                         self.filter.iter().any(filter_fn)
                     })
                     .collect();
@@ -135,13 +134,15 @@ impl handler::EventReader for EventReader {
 #[derive(Debug)]
 pub struct EventSender {
     room: Joined,
-    filter: Vec<EventFilter>,
+    filter: Vec<Filter>,
 }
 #[async_trait]
 impl handler::EventSender for EventSender {
+    fn get_filter(&self) -> &Vec<Filter> {
+        &self.filter
+    }
     async fn send(&self, req: SendEventRequest) -> Result<SendEventResponse> {
-        let filter_fn =
-            |f: &EventFilter| f.allow_event(&req.message_type, &req.state_key, &req.content);
+        let filter_fn = |f: &Filter| f.allow_event(&req.message_type, &req.state_key, &req.content);
 
         if self.filter.iter().any(filter_fn) {
             match req.state_key {
@@ -179,29 +180,18 @@ impl handler::EventSender for EventSender {
     }
 }
 impl<W: Widget> Driver<W> {
-    fn build_event_sender(
-        &self,
-        room_filter: &Vec<EventFilter>,
-        state_filter: &Vec<EventFilter>,
-    ) -> Option<Box<dyn handler::EventSender>> {
-        let filter = vec![state_filter.clone(), room_filter.clone()].concat();
+    fn build_event_sender(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventSender>> {
         if filter.len() > 0 {
             let s: Box<dyn handler::EventSender> =
-                Box::new(EventSender { room: self.matrix_room.clone(), filter });
+                Box::new(EventSender { room: self.matrix_room.clone(), filter: filter.clone() });
             return Some(s);
         }
         None
     }
 
-    fn build_event_reader(
-        &self,
-        room_filter: &Vec<EventFilter>,
-        state_filter: &Vec<EventFilter>,
-    ) -> Option<Box<dyn handler::EventReader>> {
-        let filter = vec![state_filter.clone(), room_filter.clone()].concat();
-
+    fn build_event_reader(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventReader>> {
         if filter.len() > 0 {
-            Some(Box::new(EventReader { room: self.matrix_room.clone(), filter }))
+            Some(Box::new(EventReader { room: self.matrix_room.clone(), filter: filter.clone() }))
         } else {
             None
         }
@@ -209,13 +199,10 @@ impl<W: Widget> Driver<W> {
 
     fn build_event_listener(
         &mut self,
-        room_filter: &Vec<EventFilter>,
-        state_filter: &Vec<EventFilter>,
+        filter: &Vec<Filter>,
     ) -> Option<mpsc::UnboundedReceiver<MatrixEvent>> {
-        let filter = vec![state_filter.clone(), room_filter.clone()].concat();
-
         let (tx, rx) = mpsc::unbounded_channel::<MatrixEvent>();
-
+        let filter = filter.clone();
         if filter.len() > 0 {
             let callback = move |ev: Raw<AnySyncTimelineEvent>| {
                 let filter = filter.clone();

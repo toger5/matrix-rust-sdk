@@ -3,7 +3,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::widget_api::{
     messages::{
-        capabilities::{EventFilter, Options},
+        capabilities::{Filter, Options},
         from_widget::{
             ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse,
             SendToDeviceRequest,
@@ -17,13 +17,6 @@ use crate::widget_api::{
 #[allow(missing_debug_implementations)]
 #[derive(Default)]
 pub struct Capabilities {
-    // The options are a private member,
-    // they contain the type filters for the listeners.
-    filter_send_room_event: Vec<EventFilter>,
-    filter_read_room_event: Vec<EventFilter>,
-    filter_send_state_event: Vec<EventFilter>,
-    filter_read_state_event: Vec<EventFilter>,
-
     // Room and state events use the same sender, reader, listener
     // on the rust-sdk side room and state events dont make a difference for the transport.
     // It is the widgets responsibility to differenciate and react to them accordingly.
@@ -38,11 +31,13 @@ pub struct Capabilities {
 #[async_trait]
 pub trait EventReader {
     async fn read(&self, req: ReadEventRequest) -> Result<ReadEventResponse>;
+    fn get_filter(&self) -> &Vec<Filter>;
 }
 
 #[async_trait]
 pub trait EventSender {
     async fn send(&self, req: SendEventRequest) -> Result<SendEventResponse>;
+    fn get_filter(&self) -> &Vec<Filter>;
 }
 
 #[async_trait]
@@ -53,18 +48,18 @@ pub trait ToDeviceSender {
 impl<'t> From<&'t Capabilities> for Options {
     fn from(capabilities: &'t Capabilities) -> Self {
         Options {
-            screenshot: false,
-
             // room events
-            send_room_event: capabilities.filter_send_room_event.clone(),
-            read_room_event: capabilities.filter_read_room_event.clone(),
-            // state events
-            send_state_event: capabilities.filter_send_state_event.clone(),
-            read_state_event: capabilities.filter_read_state_event.clone(),
+            send_filter: match &capabilities.event_sender {
+                None => vec![],
+                Some(sender) => sender.get_filter().clone(),
+            },
+            read_filter: match &capabilities.event_reader {
+                None => vec![],
+                Some(reader) => reader.get_filter().clone(),
+            },
 
-            always_on_screen: false, // "m.always_on_screen",
-
-            requires_client: false,
+            // all other unimplemented capabilities
+            ..Options::default()
         }
     }
 }
