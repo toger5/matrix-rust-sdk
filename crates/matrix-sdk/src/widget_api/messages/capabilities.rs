@@ -125,7 +125,7 @@ impl Filter for EventFilter {
     fn allow_event(
         &self,
         message_type: &String,
-        state_key: &Option<String>,
+        _state_key: &Option<String>,
         content: &serde_json::Value,
     ) -> bool {
         if message_type == &self.event_type {
