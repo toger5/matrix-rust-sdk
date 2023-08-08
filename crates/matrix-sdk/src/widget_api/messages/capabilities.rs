@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ruma::api::client::filter;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 const SEND_EVENT: &str = "org.matrix.msc2762.m.send.event";
@@ -83,9 +84,9 @@ impl<'de> Deserialize<'de> for Options {
             if capability.starts_with(SEND_EVENT) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capabilities
-                        .send_filter
-                        .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
+                    if let Ok(filter) = serde_json::from_str(cap_split[1]) {
+                        capabilities.send_filter.push(Filter::Timeline(filter));
+                    }
                 } else {
                     capabilities.send_filter.push(Filter::AllowAllTimeline);
                 }
@@ -93,9 +94,9 @@ impl<'de> Deserialize<'de> for Options {
             if capability.starts_with(READ_EVENT) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capabilities
-                        .read_filter
-                        .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
+                    if let Ok(filter) = serde_json::from_str(cap_split[1]) {
+                        capabilities.read_filter.push(Filter::Timeline(filter));
+                    }
                 } else {
                     capabilities.read_filter.push(Filter::AllowAllTimeline);
                 }
@@ -103,9 +104,9 @@ impl<'de> Deserialize<'de> for Options {
             if capability.starts_with(SEND_STATE) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capabilities
-                        .send_filter
-                        .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
+                    if let Ok(filter) = serde_json::from_str(cap_split[1]) {
+                        capabilities.send_filter.push(Filter::State(filter));
+                    }
                 } else {
                     capabilities.send_filter.push(Filter::AllowAllState);
                 }
@@ -113,9 +114,9 @@ impl<'de> Deserialize<'de> for Options {
             if capability.starts_with(READ_STATE) {
                 let cap_split: Vec<&str> = capability.split(":").collect();
                 if cap_split.len() > 1 {
-                    capabilities
-                        .read_filter
-                        .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
+                    if let Ok(filter) = serde_json::from_str(cap_split[1]) {
+                        capabilities.read_filter.push(Filter::State(filter));
+                    }
                 } else {
                     capabilities.read_filter.push(Filter::AllowAllState);
                 }

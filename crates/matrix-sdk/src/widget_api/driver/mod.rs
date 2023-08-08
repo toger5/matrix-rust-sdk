@@ -2,7 +2,7 @@ use self::widget::Widget;
 use super::{
     handler::{self, Capabilities, OpenIDState},
     messages::{
-        capabilities::{Filter, Options, EventFilter},
+        capabilities::{EventFilter, Filter, Options},
         from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
         {openid, MatrixEvent},
     },
@@ -59,6 +59,7 @@ impl<W: Widget> handler::Driver for Driver<W> {
                 "Failed to get an open id token from the homeserver. Because the userId is not available".to_owned()
             )));
         }
+        // its save to unwrap here
         let user_id = user_id.unwrap();
 
         let request =
@@ -106,15 +107,25 @@ impl handler::EventReader for EventReader {
             };
             o
         };
+
         match self.room.messages(options).await {
             Ok(messages) => {
                 // TODO fix unwrap
-                let state_events: Vec<MatrixEvent> =
-                    messages.state.iter().map(|s| s.deserialize_as().unwrap()).collect();
-                let timeline_events: Vec<MatrixEvent> =
-                    messages.chunk.iter().map(|msg| msg.event.deserialize_as().unwrap()).collect();
-                let all_messages = vec![state_events, timeline_events].concat();
-                let filtered_messages = all_messages
+                let state_events: Vec<serde_json::Result<MatrixEvent>> =
+                    messages.state.iter().map(|s| s.deserialize_as()).collect();
+                let timeline_events: Vec<serde_json::Result<MatrixEvent>> =
+                    messages.chunk.iter().map(|msg| msg.event.deserialize_as()).collect();
+                let mut all_messages = state_events;
+                all_messages.append(&mut timeline_events);
+
+                let failed_messages: Vec<serde_json::Result<MatrixEvent>> =
+                    all_messages.into_iter().filter(|res| res.is_err()).collect();
+                if failed_messages.len() > 0 {
+                    eprintln!("There were {} failed messages while trying to format them to send them to a widget.", failed_messages.len());
+                }
+                let all_messages: Vec<MatrixEvent> =
+                    all_messages.iter().filter_map(|res| res.ok()).collect();
+                let allowed_messages = all_messages
                     .into_iter()
                     .filter(|m| {
                         let filter_fn =
@@ -122,7 +133,7 @@ impl handler::EventReader for EventReader {
                         self.filter.iter().any(filter_fn)
                     })
                     .collect();
-                Ok(ReadEventResponse { events: filtered_messages })
+                Ok(ReadEventResponse { events: allowed_messages })
             }
             Err(err) => Err(WidgetError(
                 format!("Could not fetch messages from homeserver: {}", err.to_string())
