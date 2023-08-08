@@ -26,9 +26,7 @@ pub struct Driver<W: Widget> {
 #[async_trait(?Send)]
 impl<W: Widget> handler::Driver for Driver<W> {
     async fn send(&self, _message: handler::Outgoing) -> Result<()> {
-        // let message_str = serde_json::to_string(&message)?;
-        let _ = self.widget.send_widget_message("TODO get message string from outgoing");
-        Result::Ok(())
+        unimplemented!()
     }
     async fn initialise(&mut self, options: Options) -> Result<Capabilities> {
         let options = self.widget.capability_permissions(options).await?;
