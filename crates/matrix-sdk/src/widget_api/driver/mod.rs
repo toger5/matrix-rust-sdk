@@ -66,15 +66,9 @@ impl<W: Widget> handler::Driver for Driver<W> {
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
         // TODO: make the client ask the user first.
         // We wont care about this for Element call -> Element X
-        // if !self.has_open_id_user_permission() {
-        //     let (rx,tx) = tokio::oneshot::channel();
-        //     return OpenIDState::Pending(tx);
-        //     let permissions = widget.openid_permissions().await?;
-        //     if (permissions.should_cache){
-        //        self.auto_allow_openid_token(permission.is_allowed);
-        //     }
-        //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
-        // }
+        // return Pending until the user has confirmed the open id permission with widget.aquire_openid(),
+        // then call get_openid again with the Pending oneshot channel as an optional prop so that the receiver in Pending
+        // can be resolved as soon as the token is fetched from the server.
 
         let Some(user_id) = self.room.client.user_id() else {
             return OpenIDState::Resolved(Err(WidgetError("No user ID available".to_owned())));
