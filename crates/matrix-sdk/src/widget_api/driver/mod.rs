@@ -1,5 +1,9 @@
 use async_trait::async_trait;
-use ruma::{api::client::filter::RoomEventFilter, events::AnySyncTimelineEvent, serde::Raw};
+use ruma::{
+    api::client::{account::request_openid_token, filter::RoomEventFilter},
+    events::AnySyncTimelineEvent,
+    serde::Raw,
+};
 use tokio::sync::mpsc;
 
 use self::widget::Widget;
@@ -22,7 +26,7 @@ pub mod widget;
 
 #[derive(Debug)]
 pub struct Driver<W: Widget> {
-    matrix_room: Joined,
+    room: Joined,
     widget: W,
     // TODO disconnect the handle if the driver is dropped.
     add_event_handler_handle: Option<EventHandlerHandle>,
@@ -33,15 +37,16 @@ impl<W: Widget> handler::Driver for Driver<W> {
     async fn send(&self, _message: handler::Outgoing) -> Result<()> {
         unimplemented!()
     }
+
     async fn initialise(&mut self, options: Options) -> Result<Capabilities> {
         let options = self.widget.capability_permissions(options).await?;
 
-        let mut capabilities = Capabilities::default();
-
-        capabilities.event_listener = self.build_event_listener(&options.read_filter);
-        capabilities.event_sender = self.build_event_sender(&options.send_filter);
-        capabilities.event_reader = self.build_event_reader(&options.read_filter);
-        Result::Ok(capabilities)
+        Result::Ok(Capabilities {
+            event_listener: self.build_event_listener(&options.read_filter),
+            event_sender: self.build_event_sender(&options.send_filter),
+            event_reader: self.build_event_reader(&options.read_filter),
+            ..Capabilities::default()
+        })
     }
 
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
@@ -57,43 +62,28 @@ impl<W: Widget> handler::Driver for Driver<W> {
         //     self.get_openid(req, Some(tx)); // get open id can be called with or without tx and either reutrns as return or sends return val over tx
         // }
 
-        let user_id = self.matrix_room.client.user_id();
-        if user_id == None {
-            return OpenIDState::Resolved(Err(WidgetError(
-                "Failed to get an open id token from the homeserver. Because the userId is not available".to_owned()
-            )));
-        }
-        // its save to unwrap here
-        let user_id = user_id.unwrap();
+        let Some(user_id) = self.room.client.user_id() else {
+            return OpenIDState::Resolved(Err(WidgetError("No user ID available".to_owned())));
+        };
 
-        let request =
-            ruma::api::client::account::request_openid_token::v3::Request::new(user_id.to_owned());
-        let res = self.matrix_room.client.send(request, None).await;
-
-        let state = match res {
-            Err(err) => Err(WidgetError(
-                format!(
-                    "Failed to get an open id token from the homeserver. Because of Http Error: {}",
-                    err.to_string()
-                )
-                .to_owned(),
-            )),
-            Ok(res) => Ok(openid::Response {
+        let request = request_openid_token::v3::Request::new(user_id.to_owned());
+        match self.room.client.send(request, None).await {
+            Err(e) => OpenIDState::Resolved(Err(WidgetError(e.to_string()))),
+            Ok(res) => OpenIDState::Resolved(Ok(openid::Response {
                 id: req.id,
                 token: res.access_token,
                 expires_in_seconds: res.expires_in.as_secs() as usize,
                 server: res.matrix_server_name.to_string(),
                 kind: res.token_type.to_string(),
-            }),
-        };
-        OpenIDState::Resolved(state)
+            })),
+        }
     }
 }
 
 impl<W: Widget> Drop for Driver<W> {
     fn drop(&mut self) {
         if let Some(handle) = &self.add_event_handler_handle {
-            self.matrix_room.client().remove_event_handler(handle.clone());
+            self.room.client().remove_event_handler(handle.clone());
         }
     }
 }
@@ -103,6 +93,7 @@ pub struct EventReader {
     room: Joined,
     filter: Vec<Filter>,
 }
+
 #[async_trait]
 impl handler::EventReader for EventReader {
     fn get_filter(&self) -> &Vec<Filter> {
@@ -120,38 +111,31 @@ impl handler::EventReader for EventReader {
             o
         };
 
-        match self.room.messages(options).await {
-            Ok(messages) => {
-                // TODO fix unwrap
-                let state_events: Vec<serde_json::Result<MatrixEvent>> =
-                    messages.state.iter().map(|s| s.deserialize_as()).collect();
-                let mut timeline_events: Vec<serde_json::Result<MatrixEvent>> =
-                    messages.chunk.iter().map(|msg| msg.event.deserialize_as()).collect();
-                let mut all_messages = state_events;
-                all_messages.append(&mut timeline_events);
+        let messages = self.room.messages(options).await?;
 
-                let failed_messages: Vec<&serde_json::Result<MatrixEvent>> =
-                    all_messages.iter().filter(|res| res.is_err()).collect();
-                if failed_messages.len() > 0 {
-                    eprintln!("There were {} failed messages while trying to format them to send them to a widget.", failed_messages.len());
-                }
-                let all_messages: Vec<MatrixEvent> =
-                    all_messages.into_iter().filter_map(|res| res.ok()).collect();
-                let allowed_messages = all_messages
-                    .into_iter()
-                    .filter(|m| {
-                        let filter_fn =
-                            |f: &Filter| f.allow_event(&m.event_type, &m.state_key, &m.content);
-                        self.filter.iter().any(filter_fn)
-                    })
-                    .collect();
-                Ok(ReadEventResponse { events: allowed_messages })
+        let state_events: Vec<serde_json::Result<MatrixEvent>> =
+            messages.state.iter().map(|s| s.deserialize_as()).collect();
+        let mut timeline_events: Vec<serde_json::Result<MatrixEvent>> =
+            messages.chunk.iter().map(|msg| msg.event.deserialize_as()).collect();
+        let mut all_messages = state_events;
+        all_messages.append(&mut timeline_events);
+
+        {
+            let failed_messages: Vec<&serde_json::Result<MatrixEvent>> =
+                all_messages.iter().filter(|res| res.is_err()).collect();
+            if failed_messages.len() > 0 {
+                eprintln!("There were {} failed messages while trying to format them to send them to a widget.", failed_messages.len());
             }
-            Err(err) => Err(WidgetError(
-                format!("Could not fetch messages from homeserver: {}", err.to_string())
-                    .to_string(),
-            )),
         }
+        let allowed_messages: Vec<MatrixEvent> = all_messages
+            .into_iter()
+            .filter_map(|res| res.ok())
+            .filter(|m| {
+                let filter_fn = |f: &Filter| f.allow_event(&m.event_type, &m.state_key, &m.content);
+                self.filter.iter().any(filter_fn)
+            })
+            .collect();
+        Ok(ReadEventResponse { events: allowed_messages })
     }
 }
 #[derive(Debug)]
@@ -159,6 +143,7 @@ pub struct EventSender {
     room: Joined,
     filter: Vec<Filter>,
 }
+
 #[async_trait]
 impl handler::EventSender for EventSender {
     fn get_filter(&self) -> &Vec<Filter> {
@@ -206,7 +191,7 @@ impl<W: Widget> Driver<W> {
     fn build_event_sender(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventSender>> {
         if filter.len() > 0 {
             let s: Box<dyn handler::EventSender> =
-                Box::new(EventSender { room: self.matrix_room.clone(), filter: filter.clone() });
+                Box::new(EventSender { room: self.room.clone(), filter: filter.clone() });
             return Some(s);
         }
         None
@@ -214,7 +199,7 @@ impl<W: Widget> Driver<W> {
 
     fn build_event_reader(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventReader>> {
         if filter.len() > 0 {
-            Some(Box::new(EventReader { room: self.matrix_room.clone(), filter: filter.clone() }))
+            Some(Box::new(EventReader { room: self.room.clone(), filter: filter.clone() }))
         } else {
             None
         }
@@ -245,7 +230,7 @@ impl<W: Widget> Driver<W> {
                     }
                 }
             };
-            self.add_event_handler_handle = Some(self.matrix_room.add_event_handler(callback));
+            self.add_event_handler_handle = Some(self.room.add_event_handler(callback));
             return Some(rx);
         }
 

@@ -9,7 +9,7 @@ use super::messages::{
 pub use super::{Error, Result};
 pub use self::{
     capabilities::{Capabilities, EventReader, EventSender},
-    driver::{Driver, OpenIDResult, OpenIDState},
+    driver::{Driver, OpenIDState},
     incoming::Message as Incoming,
     outgoing::Message as Outgoing,
     request::Request,
@@ -124,16 +124,6 @@ impl<T: Driver> MessageHandler<T> {
             .await
             .map_err(|_| "Failed to write events")
     }
-
-    // async fn send_to_device(&mut self, req: &SendToDeviceRequest) -> StdResult<(), &'static str> {
-    //     self.capabilities()?
-    //         .to_device_sender
-    //         .as_mut()
-    //         .ok_or("No permissions to send to device messages")?
-    //         .send(req.clone())
-    //         .await
-    //         .map_err(|_| "Failed to write events")
-    // }
 
     fn capabilities(&mut self) -> StdResult<&mut Capabilities, &'static str> {
         self.capabilities.as_mut().ok_or("Capabilities have not been negotiated")

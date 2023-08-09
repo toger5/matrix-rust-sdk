@@ -63,6 +63,7 @@ impl Widget for DummyWidget {
     ) -> Result<capabilities::Options> {
         Ok(cap)
     }
+    
     async fn openid_permissions(&self) -> Result<OpenIdDialogResponse> {
         Ok(OpenIdDialogResponse { is_allowed: true, cache_permission: true })
     }
