@@ -162,30 +162,29 @@ impl handler::EventSender for EventSender {
 
         if self.filter.iter().any(filter_fn) {
             match req.state_key {
-                Some(state_key) => {
-                    match self
+                Some(key) => {
+                    let res = self
                         .room
-                        .send_state_event_raw(req.content, &req.message_type, &state_key)
+                        .send_state_event_raw(req.content, &req.message_type, &key)
                         .await
-                    {
-                        Ok(send_res) => Ok(SendEventResponse {
-                            room_id: self.room.room_id().to_string(),
-                            event_id: send_res.event_id.to_string(),
-                        }),
-                        Err(err) => {
-                            Err(WidgetError(format!("Could not send event with error: {}", err)))
-                        }
-                    }
-                }
-                None => match self.room.send_raw(req.content, &req.message_type, None).await {
-                    Ok(send_res) => Ok(SendEventResponse {
+                        .map_err(|e| {
+                            WidgetError(format!("Could not send event with error: {}", e))
+                        })?;
+                    Ok(SendEventResponse {
                         room_id: self.room.room_id().to_string(),
-                        event_id: send_res.event_id.to_string(),
-                    }),
-                    Err(err) => {
-                        Err(WidgetError(format!("Could not send event with error: {}", err)))
-                    }
-                },
+                        event_id: res.event_id.to_string(),
+                    })
+                }
+                None => {
+                    let res =
+                        self.room.send_raw(req.content, &req.message_type, None).await.map_err(
+                            |e| WidgetError(format!("Could not send event with error: {}", e)),
+                        )?;
+                    Ok(SendEventResponse {
+                        room_id: self.room.room_id().to_string(),
+                        event_id: res.event_id.to_string(),
+                    })
+                }
             }
         } else {
             Err(WidgetError(format!(
