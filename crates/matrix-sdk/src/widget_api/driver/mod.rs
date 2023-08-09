@@ -2,10 +2,6 @@ use async_trait::async_trait;
 use ruma::{api::client::filter::RoomEventFilter, events::AnySyncTimelineEvent, serde::Raw};
 use tokio::sync::mpsc;
 
-use crate::{
-    room::MessagesOptions,
-    {event_handler::EventHandlerHandle, room::Joined},
-};
 use self::widget::Widget;
 use super::{
     handler::{self, Capabilities, OpenIDState},
@@ -17,13 +13,18 @@ use super::{
     },
     {Error::WidgetError, Result},
 };
+use crate::{
+    room::MessagesOptions,
+    {event_handler::EventHandlerHandle, room::Joined},
+};
 
 pub mod widget;
 
 #[derive(Debug)]
 pub struct Driver<W: Widget> {
-    pub matrix_room: Joined,
-    pub widget: W,
+    matrix_room: Joined,
+    widget: W,
+    // TODO disconnect the handle if the driver is dropped.
     add_event_handler_handle: Option<EventHandlerHandle>,
 }
 
@@ -42,6 +43,7 @@ impl<W: Widget> handler::Driver for Driver<W> {
         capabilities.event_reader = self.build_event_reader(&options.read_filter);
         Result::Ok(capabilities)
     }
+
     async fn get_openid(&self, req: openid::Request) -> OpenIDState {
         // TODO: make the client ask the user first.
         // We wont care about this for Element call -> Element X
@@ -85,6 +87,14 @@ impl<W: Widget> handler::Driver for Driver<W> {
             }),
         };
         OpenIDState::Resolved(state)
+    }
+}
+
+impl<W: Widget> Drop for Driver<W> {
+    fn drop(&mut self) {
+        if let Some(handle) = &self.add_event_handler_handle {
+            self.matrix_room.client().remove_event_handler(handle.clone());
+        }
     }
 }
 
