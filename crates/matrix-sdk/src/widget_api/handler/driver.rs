@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use tokio::sync::oneshot::Receiver;
 
 use super::{
-    messages::{capabilities::Options as CapabilitiesReq, openid},
     capabilities::Capabilities,
+    messages::{capabilities::Options as CapabilitiesReq, openid},
     Outgoing, Result,
 };
 
@@ -35,7 +35,10 @@ impl From<OpenIDResult> for openid::State {
     fn from(result: OpenIDResult) -> Self {
         match result {
             Ok(response) => openid::State::Allowed(response),
-            Err(_) => openid::State::Blocked,
+            Err(e) => {
+                println!("Open id token state is send to a widget as Blocked because: {e}");
+                openid::State::Blocked
+            }
         }
     }
 }
