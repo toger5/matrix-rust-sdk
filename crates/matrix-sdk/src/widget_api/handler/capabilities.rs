@@ -49,14 +49,16 @@ impl<'t> From<&'t Capabilities> for Options {
     fn from(capabilities: &'t Capabilities) -> Self {
         Options {
             // room events
-            send_filter: match &capabilities.event_sender {
-                None => vec![],
-                Some(sender) => sender.get_filter().clone(),
-            },
-            read_filter: match &capabilities.event_reader {
-                None => vec![],
-                Some(reader) => reader.get_filter().clone(),
-            },
+            read_filter: capabilities
+                .event_reader
+                .as_ref()
+                .map(|r| r.get_filter().clone())
+                .unwrap_or_default(),
+            send_filter: capabilities
+                .event_sender
+                .as_ref()
+                .map(|r| r.get_filter().clone())
+                .unwrap_or_default(),
 
             // all other unimplemented capabilities
             ..Options::default()

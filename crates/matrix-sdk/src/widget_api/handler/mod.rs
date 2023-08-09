@@ -74,9 +74,8 @@ impl<T: Driver> MessageHandler<T> {
                 r.reply(response)?;
             }
 
-            Incoming::SendToDeviceRequest(r) => {
-                // let response = self.send_to_device(&r).await;
-                // r.reply(response)?;
+            Incoming::SendToDeviceRequest(_r) => {
+                unimplemented!()
             }
         }
 

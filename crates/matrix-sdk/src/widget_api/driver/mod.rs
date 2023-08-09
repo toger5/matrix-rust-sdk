@@ -39,7 +39,7 @@ impl<W: Widget> handler::Driver for Driver<W> {
     }
 
     async fn initialise(&mut self, options: Options) -> Result<Capabilities> {
-        let options = self.widget.capability_permissions(options).await?;
+        let options = self.widget.aquire_permissions(options).await?;
 
         Result::Ok(Capabilities {
             event_listener: self.build_event_listener(&options.read_filter),
