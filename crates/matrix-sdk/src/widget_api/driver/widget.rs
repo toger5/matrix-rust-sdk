@@ -38,8 +38,10 @@ pub trait Widget {
     /// Returns the widget id from the widget state event.
     fn id(&self) -> &str;
 
-    /// Returns the widget state event as a raw string.
-    fn get_widget_state_json(&self) -> &str;
+    /// Returns if the widget should initialize immediately (send the capability request) or wait for the ContentLoaded action.
+    /// This can be obtained by wait_for_iframe_load value in the widget state event.
+    /// `wait_for_iframe_load = true => initialize_immediately = true`
+    fn initialize_immediately(&self) -> bool;
 }
 
 #[derive(Debug)]
@@ -72,7 +74,7 @@ impl Widget for DummyWidget {
         todo!()
     }
 
-    fn get_widget_state_json(&self) -> &str {
+    fn initialize_immediately(&self) -> bool {
         todo!()
     }
 }
