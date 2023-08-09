@@ -1,5 +1,6 @@
-use self::{from_widget::FromWidgetMessage, to_widget::ToWidgetMessage};
 use serde::{Deserialize, Serialize};
+
+use self::{from_widget::FromWidgetMessage, to_widget::ToWidgetMessage};
 
 pub mod capabilities;
 pub mod from_widget;

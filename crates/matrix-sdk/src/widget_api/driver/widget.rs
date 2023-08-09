@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 
-use super::handler::Result;
-use crate::widget_api::messages::capabilities;
+use super::{handler::Result, messages::capabilities};
 
 /// The Widget trait that needs to be implemented in the native client.
 /// An instance implementing this trait will be required to initialize the widget driver.

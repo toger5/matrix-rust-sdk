@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::widget_api::{
+use super::{
     messages::{
         capabilities::{Filter, Options},
         from_widget::{

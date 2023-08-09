@@ -1,18 +1,22 @@
+use async_trait::async_trait;
+use ruma::{api::client::filter::RoomEventFilter, events::AnySyncTimelineEvent, serde::Raw};
+use tokio::sync::mpsc;
+
+use crate::{
+    room::MessagesOptions,
+    {event_handler::EventHandlerHandle, room::Joined},
+};
 use self::widget::Widget;
 use super::{
     handler::{self, Capabilities, OpenIDState},
     messages::{
+        self,
         capabilities::{EventFilter, Filter, Options},
         from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
         {openid, MatrixEvent},
     },
     {Error::WidgetError, Result},
 };
-use crate::room::MessagesOptions;
-use crate::{event_handler::EventHandlerHandle, room::Joined};
-use async_trait::async_trait;
-use ruma::{api::client::filter::RoomEventFilter, events::AnySyncTimelineEvent, serde::Raw};
-use tokio::sync::mpsc;
 
 pub mod widget;
 
@@ -111,18 +115,18 @@ impl handler::EventReader for EventReader {
                 // TODO fix unwrap
                 let state_events: Vec<serde_json::Result<MatrixEvent>> =
                     messages.state.iter().map(|s| s.deserialize_as()).collect();
-                let timeline_events: Vec<serde_json::Result<MatrixEvent>> =
+                let mut timeline_events: Vec<serde_json::Result<MatrixEvent>> =
                     messages.chunk.iter().map(|msg| msg.event.deserialize_as()).collect();
                 let mut all_messages = state_events;
                 all_messages.append(&mut timeline_events);
 
-                let failed_messages: Vec<serde_json::Result<MatrixEvent>> =
-                    all_messages.into_iter().filter(|res| res.is_err()).collect();
+                let failed_messages: Vec<&serde_json::Result<MatrixEvent>> =
+                    all_messages.iter().filter(|res| res.is_err()).collect();
                 if failed_messages.len() > 0 {
                     eprintln!("There were {} failed messages while trying to format them to send them to a widget.", failed_messages.len());
                 }
                 let all_messages: Vec<MatrixEvent> =
-                    all_messages.iter().filter_map(|res| res.ok()).collect();
+                    all_messages.into_iter().filter_map(|res| res.ok()).collect();
                 let allowed_messages = all_messages
                     .into_iter()
                     .filter(|m| {

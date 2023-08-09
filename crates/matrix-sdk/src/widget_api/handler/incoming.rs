@@ -1,9 +1,11 @@
-use crate::widget_api::messages::from_widget::{
-    ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse, SendToDeviceRequest,
-};
-
 use super::{
-    super::messages::{openid, SupportedVersions},
+    messages::{
+        from_widget::{
+            ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse,
+            SendToDeviceRequest,
+        },
+        openid, SupportedVersions,
+    },
     Request,
 };
 

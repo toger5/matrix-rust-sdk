@@ -1,11 +1,12 @@
 use std::result::Result as StdResult;
 
-mod capabilities;
-mod driver;
-mod incoming;
-mod outgoing;
-mod request;
-
+use super::messages::{
+    self,
+    capabilities::Options as CapabilitiesReq,
+    from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
+    SupportedVersions, SUPPORTED_API_VERSIONS,
+};
+pub use super::{Error, Result};
 pub use self::{
     capabilities::{Capabilities, EventReader, EventSender},
     driver::{Driver, OpenIDResult, OpenIDState},
@@ -13,12 +14,12 @@ pub use self::{
     outgoing::Message as Outgoing,
     request::Request,
 };
-use super::messages::{
-    capabilities::Options as CapabilitiesReq,
-    from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
-    SupportedVersions, SUPPORTED_API_VERSIONS,
-};
-pub use super::{Error, Result};
+
+mod capabilities;
+mod driver;
+mod incoming;
+mod outgoing;
+mod request;
 
 #[allow(missing_debug_implementations)]
 pub struct MessageHandler<T> {

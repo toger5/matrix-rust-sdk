@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use ruma::api::client::filter;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 const SEND_EVENT: &str = "org.matrix.msc2762.m.send.event";
