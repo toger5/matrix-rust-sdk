@@ -12,13 +12,13 @@ pub trait Widget {
     /// # Examples
     /// ```
     /// implement Widget for MyWidget {
-    ///     fn send_widget_message(&self, message: &str) -> Result<()> {
+    ///     fn send(&self, message: &str) -> Result<()> {
     ///         myWidgetIFrame.postmessage(message);
     ///         Ok()
     ///     }
     /// }
     ///```
-    fn send_widget_message(&self, message: &str) -> Result<()>;
+    fn send(&self, message: &str) -> Result<()>;
 
     /// The client should show a dialog to give the user the option approve some/all of the capabilites that the widget requests.
     /// The returned value contains the capability options the user has approved.
@@ -53,7 +53,7 @@ pub struct DummyWidget {}
 
 #[async_trait]
 impl Widget for DummyWidget {
-    fn send_widget_message(&self, _message: &str) -> Result<()> {
+    fn send(&self, _message: &str) -> Result<()> {
         todo!()
     }
 
