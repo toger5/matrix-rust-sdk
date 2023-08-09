@@ -43,8 +43,22 @@ impl<W: Widget> handler::Driver for Driver<W> {
 
         Result::Ok(Capabilities {
             event_listener: self.build_event_listener(&options.read_filter),
-            event_sender: self.build_event_sender(&options.send_filter),
-            event_reader: self.build_event_reader(&options.read_filter),
+            event_sender: {
+                let filter = &options.send_filter;
+                if filter.is_empty() {
+                    None
+                } else {
+                    Some(Box::new(EventSender { room: self.room.clone(), filter: filter.clone() }))
+                }
+            },
+            event_reader: {
+                let filter = &options.read_filter;
+                if filter.is_empty() {
+                    None
+                } else {
+                    Some(Box::new(EventReader { room: self.room.clone(), filter: filter.clone() }))
+                }
+            },
             ..Capabilities::default()
         })
     }
@@ -188,30 +202,13 @@ impl handler::EventSender for EventSender {
     }
 }
 impl<W: Widget> Driver<W> {
-    fn build_event_sender(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventSender>> {
-        if filter.len() > 0 {
-            let s: Box<dyn handler::EventSender> =
-                Box::new(EventSender { room: self.room.clone(), filter: filter.clone() });
-            return Some(s);
-        }
-        None
-    }
-
-    fn build_event_reader(&self, filter: &Vec<Filter>) -> Option<Box<dyn handler::EventReader>> {
-        if filter.len() > 0 {
-            Some(Box::new(EventReader { room: self.room.clone(), filter: filter.clone() }))
-        } else {
-            None
-        }
-    }
-
     fn build_event_listener(
         &mut self,
         filter: &Vec<Filter>,
     ) -> Option<mpsc::UnboundedReceiver<MatrixEvent>> {
         let (tx, rx) = mpsc::unbounded_channel::<MatrixEvent>();
         let filter = filter.clone();
-        if filter.len() > 0 {
+        if !filter.is_empty() {
             let callback = move |ev: Raw<AnySyncTimelineEvent>| {
                 let filter = filter.clone();
                 let tx = tx.clone();
