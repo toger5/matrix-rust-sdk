@@ -1,18 +1,20 @@
 use std::result::Result as StdResult;
 
-use super::messages::{
-    self,
-    capabilities::Options as CapabilitiesReq,
-    from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
-    SupportedVersions, SUPPORTED_API_VERSIONS,
-};
-pub use super::{Error, Result};
 pub use self::{
     capabilities::{Capabilities, EventReader, EventSender},
-    driver::{Driver, OpenIDState},
+    driver::{Driver, OpenIDResult, OpenIDState},
     incoming::Message as Incoming,
     outgoing::Message as Outgoing,
-    request::Request,
+    request::{Request, Response},
+};
+use super::{
+    messages::{
+        self,
+        capabilities::Options as CapabilitiesReq,
+        from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
+        openid, SupportedVersions, SUPPORTED_API_VERSIONS,
+    },
+    Error, Result,
 };
 
 mod capabilities;
@@ -42,7 +44,7 @@ impl<T: Driver> MessageHandler<T> {
             Incoming::ContentLoaded(r) => {
                 let response = match self.capabilities.as_ref() {
                     Some(..) => Ok(()),
-                    None => Err("Capabilities have already been sent"),
+                    None => Err("Capabilities have already been sent".to_owned()),
                 };
                 r.reply(response)?;
                 self.initialise().await?;
@@ -54,9 +56,14 @@ impl<T: Driver> MessageHandler<T> {
 
             Incoming::GetOpenID(r) => {
                 let state = self.driver.get_openid(r.clone()).await;
-                r.reply(Ok((&state).into()))?;
+                r.reply(
+                    (&state)
+                        .as_ref()
+                        .map(|s| -> openid::State { s.into() })
+                        .map_err(|e| e.to_string()),
+                )?;
 
-                if let OpenIDState::Pending(resolution) = state {
+                if let Ok(OpenIDState::Pending(resolution)) = state {
                     let resolved = resolution.await.map_err(|_| Error::WidgetDied)?;
                     let (req, resp) = Request::new(resolved.into());
                     self.driver.send(Outgoing::OpenIDUpdated(req)).await?;
@@ -101,30 +108,27 @@ impl<T: Driver> MessageHandler<T> {
     async fn read_events(
         &mut self,
         req: &ReadEventRequest,
-    ) -> StdResult<ReadEventResponse, &'static str> {
+    ) -> StdResult<ReadEventResponse, String> {
         self.capabilities()?
             .event_reader
             .as_mut()
-            .ok_or("No permissions to read the events")?
+            .ok_or("No permissions to read the events".to_owned())?
             .read(req.clone())
             .await
-            .map_err(|_| "Failed to read events")
+            .map_err(|_| "Failed to read events".to_owned())
     }
 
-    async fn send_event(
-        &mut self,
-        req: &SendEventRequest,
-    ) -> StdResult<SendEventResponse, &'static str> {
+    async fn send_event(&mut self, req: &SendEventRequest) -> StdResult<SendEventResponse, String> {
         self.capabilities()?
             .event_sender
             .as_mut()
-            .ok_or("No permissions to write the events")?
+            .ok_or("No permissions to write the events".to_owned())?
             .send(req.clone())
             .await
-            .map_err(|_| "Failed to write events")
+            .map_err(|_| "Failed to write events".to_owned())
     }
 
-    fn capabilities(&mut self) -> StdResult<&mut Capabilities, &'static str> {
-        self.capabilities.as_mut().ok_or("Capabilities have not been negotiated")
+    fn capabilities(&mut self) -> StdResult<&mut Capabilities, String> {
+        self.capabilities.as_mut().ok_or("Capabilities have not been negotiated".to_owned())
     }
 }

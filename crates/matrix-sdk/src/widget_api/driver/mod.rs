@@ -63,7 +63,7 @@ impl<W: Widget> handler::Driver for Driver<W> {
         })
     }
 
-    async fn get_openid(&self, req: openid::Request) -> OpenIDState {
+    async fn get_openid(&self, req: openid::Request) -> Result<OpenIDState> {
         // TODO: make the client ask the user first.
         // We wont care about this for Element call -> Element X
         // return Pending until the user has confirmed the open id permission with widget.aquire_openid(),
@@ -71,20 +71,20 @@ impl<W: Widget> handler::Driver for Driver<W> {
         // can be resolved as soon as the token is fetched from the server.
 
         let Some(user_id) = self.room.client.user_id() else {
-            return OpenIDState::Resolved(Err(WidgetError("No user ID available".to_owned())));
+            return Err(WidgetError("No user ID available".to_owned()));
         };
 
         let request = request_openid_token::v3::Request::new(user_id.to_owned());
-        match self.room.client.send(request, None).await {
-            Err(e) => OpenIDState::Resolved(Err(WidgetError(e.to_string()))),
-            Ok(res) => OpenIDState::Resolved(Ok(openid::Response {
-                id: req.id,
-                token: res.access_token,
-                expires_in_seconds: res.expires_in.as_secs() as usize,
-                server: res.matrix_server_name.to_string(),
-                kind: res.token_type.to_string(),
-            })),
-        }
+        let res = self.room.client.send(request, None).await.map_err(|e| {
+            WidgetError(format!("Could not get open id token from Homeserver: {}", e.to_string()))
+        })?;
+        Ok(OpenIDState::Resolved(Some(openid::Response {
+            id: req.id,
+            token: res.access_token,
+            expires_in_seconds: res.expires_in.as_secs() as usize,
+            server: res.matrix_server_name.to_string(),
+            kind: res.token_type.to_string(),
+        })))
     }
 }
 

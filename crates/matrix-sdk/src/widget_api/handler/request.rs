@@ -4,7 +4,7 @@ use tokio::sync::oneshot::{Receiver, Sender};
 
 use super::{Error, Result};
 
-type Response<T> = StdResult<T, &'static str>;
+pub type Response<T> = StdResult<T, String>;
 
 #[allow(missing_debug_implementations)]
 pub struct Request<Req, Resp> {
