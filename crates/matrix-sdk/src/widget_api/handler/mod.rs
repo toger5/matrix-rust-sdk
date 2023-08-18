@@ -30,13 +30,8 @@ pub struct MessageHandler<C, W> {
 }
 
 impl<C: Client, W: Widget> MessageHandler<C, W> {
-    pub async fn new(client: C, widget: W) -> Result<Self> {
-        let mut handler = Self { client, widget, capabilities: None };
-        if !handler.widget.init_on_load() {
-            handler.initialise().await?;
-        }
-
-        Ok(handler)
+    pub fn new(client: C, widget: W) -> Self {
+        Self { client, widget, capabilities: None }
     }
 
     pub async fn handle(&mut self, req: Incoming) -> Result<()> {
@@ -57,6 +52,10 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
 
             Incoming::GetSupportedApiVersion(r) => {
                 r.reply(Ok(SupportedVersions { versions: SUPPORTED_API_VERSIONS.to_vec() }))?;
+
+                if self.capabilities.is_none() && !self.widget.init_on_load() {
+                    self.initialise().await?;
+                }
             }
 
             Incoming::GetOpenID(r) => {

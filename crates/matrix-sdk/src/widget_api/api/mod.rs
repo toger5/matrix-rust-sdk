@@ -35,10 +35,8 @@ pub async fn run<T: Client>(client: T, mut widget: widget::Widget) -> Result<()>
     tokio::spawn(forward(outgoing_req_rx, widget.comm.sink()));
 
     // Create a message handler (handles all incoming requests and generates outgoing requests).
-    let handler = {
-        let widget = WidgetSink::new(widget.info, outgoing_req_tx, state.clone());
-        MessageHandler::new(client, widget).await?
-    };
+    let handler =
+        MessageHandler::new(client, WidgetSink::new(widget.info, outgoing_req_tx, state.clone()));
 
     // Spawn a task that receives requests from a widget, and passes them
     // to the handler, waits for response from a handler and sends it back.
