@@ -7,7 +7,7 @@ macro_rules! handle_incoming {
             $(
                 FromWidgetAction::$req_type(mut $msg) => {
                     if $msg.response.is_some() {
-                        return Err(Error::InvalidJSON);
+                        return Err(Error::InvalidJSON("The FromWidgetAction did not contain a response Object".to_owned()));
                     }
 
                     let (req, resp) = Request::new($req_expr);

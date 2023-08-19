@@ -31,12 +31,15 @@ impl From<ToWidgetMessage> for Message {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Header {
+    #[serde(rename="requestId")]
     pub request_id: String,
+    #[serde(rename="widgetId")]
     pub widget_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageBody<Req, Resp> {
+    #[serde(flatten)]
     pub header: Header,
     #[serde(rename = "data")]
     pub request: Req,
@@ -49,7 +52,7 @@ impl<Req, Resp> MessageBody<Req, Resp> {
     }
 
     pub fn response(self) -> Result<Resp, Error> {
-        match self.response.ok_or(Error::InvalidJSON)? {
+        match self.response.ok_or(Error::InvalidJSON("The json should contain a \"response\" key".to_owned()))? {
             Response::Response(r) => Ok(r),
             Response::Error(e) => Err(Error::WidgetError(e.error.message)),
         }

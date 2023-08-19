@@ -68,7 +68,7 @@ fn process_message(
     req_sink: Sender<FromWidgetAction>,
     resp_sink: Sender<ToWidgetAction>,
 ) -> Result<()> {
-    match from_json(&raw).map_err(|_| Error::InvalidJSON)? {
+    match from_json(&raw).map_err(|e| Error::InvalidJSON(e.to_string()))? {
         WidgetMessage::ToWidget(msg) => resp_sink.send(msg).map_err(|_| Error::WidgetDied)?,
         WidgetMessage::FromWidget(msg) => req_sink.send(msg).map_err(|_| Error::WidgetDied)?,
     }
@@ -132,7 +132,7 @@ async fn process_responses(
 async fn forward(mut receiver: Receiver<impl Into<WidgetMessage>>, sink: Sender<String>) {
     while let Some(msg) = receiver.recv().await {
         let raw = to_json(&msg.into()).expect("Bug: invalid JSON");
-        let _ = sink.send(raw);
+        let _ = sink.send(raw).map_err(|e|println!("could not forward message: {}", e));
     }
 }
 
