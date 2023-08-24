@@ -1,16 +1,15 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::widget_api::{
+use super::Result;
+use crate::widget::{
     messages::{
-        capabilities::{Filter, Options},
         from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
         MatrixEvent,
     },
-    Result,
+    EventFilter, Permissions,
 };
 
-/// A wrapper for the matrix client that only exposes what is available through the capabilities.
 #[allow(missing_debug_implementations)]
 #[derive(Default)]
 pub struct Capabilities {
@@ -30,15 +29,14 @@ pub trait EventSender: Filtered + Send {
 }
 
 pub trait Filtered {
-    fn filters(&self) -> &[Filter];
+    fn filters(&self) -> &[EventFilter];
 }
 
-impl<'t> From<&'t Capabilities> for Options {
+impl<'t> From<&'t Capabilities> for Permissions {
     fn from(c: &'t Capabilities) -> Self {
         Self {
-            send_filter: c.sender.as_ref().map(|e| e.filters().to_owned()).unwrap_or_default(),
-            read_filter: c.reader.as_ref().map(|e| e.filters().to_owned()).unwrap_or_default(),
-            ..Options::default()
+            send: c.sender.as_ref().map(|e| e.filters().to_owned()).unwrap_or_default(),
+            read: c.reader.as_ref().map(|e| e.filters().to_owned()).unwrap_or_default(),
         }
     }
 }

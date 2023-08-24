@@ -47,7 +47,7 @@ pub mod sync;
 pub mod sliding_sync;
 
 #[cfg(feature = "experimental-widget-api")]
-pub mod widget_api;
+pub mod widget;
 
 #[cfg(feature = "e2e-encryption")]
 pub mod encryption;

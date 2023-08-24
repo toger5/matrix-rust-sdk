@@ -1,22 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum State {
-    #[serde(rename = "allowed")]
-    Allowed(Response),
-    #[serde(rename = "blocked")]
-    Blocked,
-    #[serde(rename = "request")]
-    Pending,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
     pub id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Response {
+pub struct State {
     #[serde(rename = "original_request_id")]
     pub id: String,
     #[serde(rename = "access_token")]
@@ -27,4 +17,12 @@ pub struct Response {
     pub server: String,
     #[serde(rename = "token_type")]
     pub kind: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Response {
+    Allowed(State),
+    Blocked,
+    Pending,
 }
