@@ -44,9 +44,9 @@ impl<C: Client, W: Widget> MessageHandler<C, W> {
             Incoming::ContentLoaded(r) => {
                 let (response, negotiate) =
                     match (self.widget.init_on_load(), self.capabilities.as_ref()) {
-                        (true, None) => (Ok(()), true),
+                        (true, None) => (Ok(Empty{}), true),
                         (true, Some(..)) => (Err(Error::AlreadyLoaded), false),
-                        _ => (Ok(()), false),
+                        _ => (Ok(Empty{}), false),
                     };
 
                 r.reply(response)?;

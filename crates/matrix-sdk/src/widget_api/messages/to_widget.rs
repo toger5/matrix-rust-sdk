@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-use super::{capabilities::Options, openid, MatrixEvent, MessageBody};
+use super::{capabilities::Options, openid, MatrixEvent, MessageBody, Empty};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
 pub enum ToWidgetMessage {
     #[serde(rename = "capabilities")]
-    SendMeCapabilities(MessageBody<(), SendMeCapabilitiesResponse>),
+    SendMeCapabilities(MessageBody<Empty, SendMeCapabilitiesResponse>),
     #[serde(rename = "notify_capabilities")]
-    CapabilitiesUpdated(MessageBody<CapabilitiesUpdatedRequest, ()>),
+    CapabilitiesUpdated(MessageBody<CapabilitiesUpdatedRequest, Empty>),
     #[serde(rename = "openid_credentials")]
-    OpenIdCredentials(MessageBody<openid::State, ()>),
+    OpenIdCredentials(MessageBody<openid::State, Empty>),
     #[serde(rename = "send_event")]
-    SendEvent(MessageBody<MatrixEvent, ()>),
+    SendEvent(MessageBody<MatrixEvent, Empty>),
 }
 
 impl ToWidgetMessage {

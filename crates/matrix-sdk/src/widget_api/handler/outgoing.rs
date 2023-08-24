@@ -2,7 +2,7 @@ use crate::widget_api::messages::{
     capabilities::Options,
     openid::State as OpenIDState,
     to_widget::{CapabilitiesUpdatedRequest, ToWidgetMessage},
-    Header, MessageBody,
+    Header, MessageBody, Empty,
 };
 
 use super::{Error, Result};
@@ -19,7 +19,7 @@ impl OutgoingMessage for SendMeCapabilities {
     type Response = Options;
 
     fn into_message(self, header: Header) -> ToWidgetMessage {
-        ToWidgetMessage::SendMeCapabilities(MessageBody::request(header, ()))
+        ToWidgetMessage::SendMeCapabilities(MessageBody::request(header, Empty{}))
     }
 
     fn extract_response(msg: ToWidgetMessage) -> Result<Self::Response> {
@@ -32,7 +32,7 @@ impl OutgoingMessage for SendMeCapabilities {
 
 pub struct CapabilitiesUpdated(pub CapabilitiesUpdatedRequest);
 impl OutgoingMessage for CapabilitiesUpdated {
-    type Response = ();
+    type Response = Empty;
 
     fn into_message(self, header: Header) -> ToWidgetMessage {
         ToWidgetMessage::CapabilitiesUpdated(MessageBody::request(header, self.0))
@@ -48,7 +48,7 @@ impl OutgoingMessage for CapabilitiesUpdated {
 
 pub struct OpenIDUpdated(pub OpenIDState);
 impl OutgoingMessage for OpenIDUpdated {
-    type Response = ();
+    type Response = Empty;
 
     fn into_message(self, header: Header) -> ToWidgetMessage {
         ToWidgetMessage::OpenIdCredentials(MessageBody::request(header, self.0))

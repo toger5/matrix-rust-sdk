@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use super::{openid, MatrixEvent, MessageBody, ReadRelationsDirection, SupportedVersions};
+use super::{openid, MatrixEvent, MessageBody, ReadRelationsDirection, SupportedVersions, Empty};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action")]
 pub enum FromWidgetMessage {
     #[serde(rename = "supported_api_versions")]
-    GetSupportedApiVersion(MessageBody<(), SupportedVersions>),
+    GetSupportedApiVersion(MessageBody<Empty, SupportedVersions>),
     #[serde(rename = "content_loaded")]
-    ContentLoaded(MessageBody<(), ()>),
+    ContentLoaded(MessageBody<Empty, Empty>),
     #[serde(rename = "get_openid")]
-    GetOpenId(MessageBody<(), openid::State>),
+    GetOpenId(MessageBody<Empty, openid::State>),
     #[serde(rename = "send_events")]
     SendEvent(MessageBody<SendEventRequest, SendEventResponse>),
     #[serde(rename = "org.matrix.msc2876.read_events")]

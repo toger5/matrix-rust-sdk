@@ -40,6 +40,7 @@ pub struct MessageBody<Req, Resp> {
     pub header: Header,
     #[serde(rename = "data")]
     pub request: Req,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<Response<Resp>>,
 }
 
@@ -78,6 +79,8 @@ impl<Resp> Into<Result<Resp, WidgetError>> for Response<Resp> {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub struct Empty{}
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WidgetError {
     pub error: WidgetErrorMessage,
