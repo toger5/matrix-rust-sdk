@@ -17,7 +17,7 @@ use super::{
         capabilities::Options as CapabilitiesReq,
         from_widget::{ReadEventRequest, ReadEventResponse, SendEventRequest, SendEventResponse},
         to_widget::CapabilitiesUpdatedRequest as CapabilitiesUpdated,
-        SupportedVersions, SUPPORTED_API_VERSIONS,
+        SupportedVersions, SUPPORTED_API_VERSIONS, Empty
     },
     Error, Result,
 };
