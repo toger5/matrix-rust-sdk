@@ -60,7 +60,9 @@ impl<'de> Deserialize<'de> for Options {
     {
         let capability_list = Vec::<String>::deserialize(deserializer)?;
         let mut capabilities = Options::default();
+        
         let err_m = |e: serde_json::Error| de::Error::custom(e.to_string());
+        
         for capability in capability_list {
             match &capability.split(":").collect::<Vec<_>>().as_slice() {
                 [SCREENSHOT] => capabilities.screenshot = true,
@@ -68,22 +70,14 @@ impl<'de> Deserialize<'de> for Options {
                 [REQUIRES_CLIENT] => capabilities.requires_client = true,
 
                 [SEND_EVENT] => capabilities.send_filter.push(Filter::AllowAllMessage),
-                [SEND_EVENT, rest] => {
-                    capabilities.send_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?))
-                }
                 [READ_EVENT] => capabilities.read_filter.push(Filter::AllowAllMessage),
-                [READ_EVENT, rest] => {
-                    capabilities.read_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?));
-                }
-
+                [SEND_EVENT, rest] => capabilities.send_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?)),
+                [READ_EVENT, rest] => capabilities.read_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?)),
+                
                 [SEND_STATE] => capabilities.send_filter.push(Filter::AllowAllState),
-                [SEND_STATE, rest] => {
-                    capabilities.send_filter.push(Filter::State(from_str(rest).map_err(err_m)?))
-                }
                 [READ_STATE] => capabilities.read_filter.push(Filter::AllowAllState),
-                [READ_STATE, rest] => {
-                    capabilities.read_filter.push(Filter::State(from_str(rest).map_err(err_m)?));
-                }
+                [SEND_STATE, rest] => capabilities.send_filter.push(Filter::State(from_str(rest).map_err(err_m)?)),
+                [READ_STATE, rest] => capabilities.read_filter.push(Filter::State(from_str(rest).map_err(err_m)?)),
                 _ => {}
             }
         }
