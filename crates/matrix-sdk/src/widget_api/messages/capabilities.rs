@@ -135,7 +135,11 @@ pub struct FilterInput<'a> {
     pub msgtype: Option<&'a str>,
 }
 impl<'a> FilterInput<'a> {
-    fn new(ev_type: &'a String, state_key: &'a Option<String>, content: &'a serde_json::Value) -> Self {
+    fn new(
+        ev_type: &'a String,
+        state_key: &'a Option<String>,
+        content: &'a serde_json::Value,
+    ) -> Self {
         Self {
             event_type: ev_type.as_str(),
             state_key: state_key.as_ref().map(|s| s.as_str()),
@@ -227,13 +231,13 @@ impl Serialize for StateFilter {
 fn to_type_and_suffix<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<(String, Option<String>), D::Error> {
-    let mut event_type = String::deserialize(deserializer)?;
-    let mut msgtype = None;
+    let event_type = String::deserialize(deserializer)?;
+    
     if let Some((ev_type, msg_type)) = event_type.clone().split_once("#") {
-        event_type = ev_type.to_owned();
-        msgtype = Some(msg_type.to_owned());
-    };
-    Ok((event_type, msgtype))
+        Ok((ev_type.to_owned(), Some(msg_type.to_owned())))
+    } else {
+        Ok((event_type, None))
+    }
 }
 
 impl<'de> Deserialize<'de> for StateFilter {
