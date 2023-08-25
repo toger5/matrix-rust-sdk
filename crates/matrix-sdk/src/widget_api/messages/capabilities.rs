@@ -1,6 +1,6 @@
 use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::from_str;
-use std::{fmt::Debug};
+use std::fmt::Debug;
 
 use super::{from_widget::SendEventRequest, MatrixEvent};
 
@@ -134,8 +134,8 @@ pub struct FilterInput<'a> {
     pub state_key: Option<&'a str>,
     pub msgtype: Option<&'a str>,
 }
-impl FilterInput<'_> {
-    fn new(ev_type: String, state_key: Option<String>, content: serde_json::Value) -> Self {
+impl<'a> FilterInput<'a> {
+    fn new(ev_type: &'a String, state_key: &'a Option<String>, content: &'a serde_json::Value) -> Self {
         Self {
             event_type: ev_type.as_str(),
             state_key: state_key.as_ref().map(|s| s.as_str()),
@@ -146,13 +146,13 @@ impl FilterInput<'_> {
 
 impl<'a> From<&'a MatrixEvent> for FilterInput<'a> {
     fn from(e: &'a MatrixEvent) -> Self {
-        Self::new(e.event_type, e.state_key, e.content)
+        Self::new(&e.event_type, &e.state_key, &e.content)
     }
 }
 
 impl<'a> From<&'a SendEventRequest> for FilterInput<'a> {
     fn from(r: &'a SendEventRequest) -> Self {
-        Self::new(r.message_type, r.state_key, r.content)
+        Self::new(&r.message_type, &r.state_key, &r.content)
     }
 }
 
