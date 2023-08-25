@@ -33,8 +33,8 @@ impl Serialize for Options {
 
         caps.iter()
             .zip(strs.iter())
-            .filter(|(c, s)| **c)
-            .for_each(|(c, s)| capability_list.push((*s).to_owned()));
+            .filter(|(c, _)| **c)
+            .for_each(|(_, s)| capability_list.push((*s).to_owned()));
 
         let s = self.send_filter.clone();
         let send =
@@ -232,7 +232,7 @@ fn to_type_and_suffix<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<(String, Option<String>), D::Error> {
     let event_type = String::deserialize(deserializer)?;
-    
+
     if let Some((ev_type, msg_type)) = event_type.clone().split_once("#") {
         Ok((ev_type.to_owned(), Some(msg_type.to_owned())))
     } else {
