@@ -1,13 +1,16 @@
-use std::fmt::Debug;
+use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::from_str;
+use std::{fmt::Debug};
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use super::{MatrixEvent, from_widget::SendEventRequest};
+use super::{from_widget::SendEventRequest, MatrixEvent};
 
 const SEND_EVENT: &str = "org.matrix.msc2762.m.send.event";
 const READ_EVENT: &str = "org.matrix.msc2762.m.receive.event";
 const SEND_STATE: &str = "org.matrix.msc2762.m.send.state_event";
 const READ_STATE: &str = "org.matrix.msc2762.m.receive.state_event";
+const SCREENSHOT: &str = "m.capability.screenshot";
+const ALWAYS_ON_SCREEN: &str = "m.always_on_screen";
+const REQUIRES_CLIENT: &str = "io.element.requires_client";
 
 #[derive(Debug, Default, Clone)]
 pub struct Options {
@@ -24,39 +27,28 @@ impl Serialize for Options {
         S: Serializer,
     {
         let mut capability_list: Vec<String> = vec![];
-        if self.screenshot {
-            capability_list.push("m.capability.screenshot".to_owned());
-        }
-        if self.always_on_screen {
-            capability_list.push("m.always_on_screen".to_owned());
-        }
-        if self.always_on_screen {
-            capability_list.push("m.always_on_screen".to_owned());
-        }
-        if self.requires_client {
-            capability_list.push("io.element.requires_client".to_owned());
+
+        let caps = vec![self.screenshot, self.always_on_screen, self.requires_client];
+        let strs = vec![SCREENSHOT, ALWAYS_ON_SCREEN, REQUIRES_CLIENT];
+
+        caps.iter()
+            .zip(strs.iter())
+            .filter(|(c, s)| **c)
+            .for_each(|(c, s)| capability_list.push((*s).to_owned()));
+
+        let s = self.send_filter.clone();
+        let send =
+            s.into_iter().map(|x| (if x.is_state_filter() { SEND_STATE } else { SEND_EVENT }, x));
+        let r = self.read_filter.clone();
+        let read =
+            r.into_iter().map(|x| (if x.is_state_filter() { READ_STATE } else { READ_EVENT }, x));
+
+        for (base, filter) in send.chain(read) {
+            let ext =
+                filter.capability_extension().map_err(|e| ser::Error::custom(e.to_string()))?;
+            capability_list.push(base.to_owned() + &ext);
         }
 
-        let all_filter = vec![
-            self.send_filter
-                .clone()
-                .into_iter()
-                .map(|x| (if x.is_state_filter() { SEND_STATE } else { SEND_EVENT }, x))
-                .collect::<Vec<(&str, Filter)>>(),
-            self.read_filter
-                .clone()
-                .into_iter()
-                .map(|x| (if x.is_state_filter() { READ_STATE } else { READ_EVENT }, x))
-                .collect::<Vec<(&str, Filter)>>(),
-        ]
-        .concat();
-
-        for (base, filter) in all_filter {
-            match filter.capability_extension() {
-                Ok(ext) => capability_list.push(base.to_owned() + &ext),
-                Err(_) => continue,
-            }
-        }
         capability_list.serialize(serializer)
     }
 }
@@ -68,59 +60,33 @@ impl<'de> Deserialize<'de> for Options {
     {
         let capability_list = Vec::<String>::deserialize(deserializer)?;
         let mut capabilities = Options::default();
-
+        let err_m = |e: serde_json::Error| de::Error::custom(e.to_string());
         for capability in capability_list {
-            if capability == "m.capability.screenshot" {
-                capabilities.screenshot = true;
-            }
-            if capability == "m.always_on_screen" {
-                capabilities.always_on_screen = true;
-            }
-            if capability == "io.element.requires_client" {
-                capabilities.requires_client = true;
-            }
-            if capability.starts_with(SEND_EVENT) {
-                let cap_split: Vec<&str> = capability.split(":").collect();
-                if cap_split.len() > 1 {
-                    capabilities
-                        .send_filter
-                        .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
-                } else {
-                    capabilities.send_filter.push(Filter::AllowAllTimeline);
+            match &capability.split(":").collect::<Vec<_>>().as_slice() {
+                [SCREENSHOT] => capabilities.screenshot = true,
+                [ALWAYS_ON_SCREEN] => capabilities.always_on_screen = true,
+                [REQUIRES_CLIENT] => capabilities.requires_client = true,
+
+                [SEND_EVENT] => capabilities.send_filter.push(Filter::AllowAllMessage),
+                [SEND_EVENT, rest] => {
+                    capabilities.send_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?))
                 }
-            }
-            if capability.starts_with(READ_EVENT) {
-                let cap_split: Vec<&str> = capability.split(":").collect();
-                if cap_split.len() > 1 {
-                    capabilities
-                        .read_filter
-                        .push(Filter::Timeline(serde_json::from_str(cap_split[1]).unwrap()));
-                } else {
-                    capabilities.read_filter.push(Filter::AllowAllTimeline);
+                [READ_EVENT] => capabilities.read_filter.push(Filter::AllowAllMessage),
+                [READ_EVENT, rest] => {
+                    capabilities.read_filter.push(Filter::Timeline(from_str(rest).map_err(err_m)?));
                 }
-            }
-            if capability.starts_with(SEND_STATE) {
-                let cap_split: Vec<&str> = capability.split(":").collect();
-                if cap_split.len() > 1 {
-                    capabilities
-                        .send_filter
-                        .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
-                } else {
-                    capabilities.send_filter.push(Filter::AllowAllState);
+
+                [SEND_STATE] => capabilities.send_filter.push(Filter::AllowAllState),
+                [SEND_STATE, rest] => {
+                    capabilities.send_filter.push(Filter::State(from_str(rest).map_err(err_m)?))
                 }
-            }
-            if capability.starts_with(READ_STATE) {
-                let cap_split: Vec<&str> = capability.split(":").collect();
-                if cap_split.len() > 1 {
-                    capabilities
-                        .read_filter
-                        .push(Filter::State(serde_json::from_str(cap_split[1]).unwrap()));
-                } else {
-                    capabilities.read_filter.push(Filter::AllowAllState);
+                [READ_STATE] => capabilities.read_filter.push(Filter::AllowAllState),
+                [READ_STATE, rest] => {
+                    capabilities.read_filter.push(Filter::State(from_str(rest).map_err(err_m)?));
                 }
+                _ => {}
             }
         }
-
         Ok(capabilities)
     }
 }
@@ -128,18 +94,18 @@ impl<'de> Deserialize<'de> for Options {
 // Event Filters
 #[derive(Debug, Clone)]
 pub enum Filter {
-    Timeline(TimelineFilter),
+    Timeline(MessageFilter),
     State(StateFilter),
-    AllowAllTimeline,
+    AllowAllMessage,
     AllowAllState,
 }
 
 impl EventFilter for Filter {
-    fn allow(&self, input: FilterInput) -> bool {
+    fn allow(&self, input: FilterInput<'_>) -> bool {
         match self {
             Filter::Timeline(f) => f.allow(input),
             Filter::State(f) => f.allow(input),
-            Filter::AllowAllTimeline => input.state_key.is_none(),
+            Filter::AllowAllMessage => input.state_key.is_none(),
             Filter::AllowAllState => input.state_key.is_some(),
         }
     }
@@ -148,7 +114,7 @@ impl EventFilter for Filter {
 impl Filter {
     pub fn is_state_filter(&self) -> bool {
         match self {
-            Filter::Timeline(_) | Filter::AllowAllTimeline => false,
+            Filter::Timeline(_) | Filter::AllowAllMessage => false,
             Filter::State(_) | Filter::AllowAllState => true,
         }
     }
@@ -157,52 +123,52 @@ impl Filter {
         match self {
             Filter::State(s_filter) => serde_json::to_string(s_filter),
             Filter::Timeline(t_filter) => serde_json::to_string(t_filter),
-            Filter::AllowAllTimeline | Filter::AllowAllState => Ok("".to_owned()),
+            Filter::AllowAllMessage | Filter::AllowAllState => Ok("".to_owned()),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FilterInput<'a> {
-    pub message_type: &'a str,
+    pub event_type: &'a str,
     pub state_key: Option<&'a str>,
-    pub content: &'a serde_json::Value,
+    pub msgtype: Option<&'a str>,
+}
+impl FilterInput<'_> {
+    fn new(ev_type: String, state_key: Option<String>, content: serde_json::Value) -> Self {
+        Self {
+            event_type: ev_type.as_str(),
+            state_key: state_key.as_ref().map(|s| s.as_str()),
+            msgtype: content.get("msgtype").and_then(|v| v.as_str()),
+        }
+    }
 }
 
 impl<'a> From<&'a MatrixEvent> for FilterInput<'a> {
-    fn from(event: &'a MatrixEvent) -> Self {
-        Self {
-            message_type: event.event_type.as_str(),
-            state_key: event.state_key.as_ref().map(|s| s.as_str()),
-            content: &event.content,
-        }
+    fn from(e: &'a MatrixEvent) -> Self {
+        Self::new(e.event_type, e.state_key, e.content)
     }
 }
 
 impl<'a> From<&'a SendEventRequest> for FilterInput<'a> {
-    fn from(req: &'a SendEventRequest) -> Self {
-        Self {
-            message_type: req.message_type.as_str(),
-            state_key: req.state_key.as_ref().map(|s| s.as_str()),
-            content: &req.content,
-        }
+    fn from(r: &'a SendEventRequest) -> Self {
+        Self::new(r.message_type, r.state_key, r.content)
     }
 }
 
-
 pub trait EventFilter {
-    fn allow(&self, input: FilterInput) -> bool;
+    fn allow(&self, input: FilterInput<'_>) -> bool;
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct TimelineFilter {
+pub struct MessageFilter {
     event_type: String,
     msgtype: Option<String>,
 }
 
-impl EventFilter for TimelineFilter {
-    fn allow(&self, input: FilterInput) -> bool {
-        if self.event_type != input.message_type {
+impl EventFilter for MessageFilter {
+    fn allow(&self, input: FilterInput<'_>) -> bool {
+        if self.event_type != input.event_type {
             return false;
         }
 
@@ -210,11 +176,11 @@ impl EventFilter for TimelineFilter {
             return true;
         };
 
-        if input.message_type != "m.room.message" {
+        if input.event_type != "m.room.message" {
             return false;
         }
 
-        input.content.get("msgtype").map(|t| &t.to_string() == allowed_type).unwrap_or(false)
+        input.msgtype.map(|t| t == allowed_type).unwrap_or(false)
     }
 }
 
@@ -225,8 +191,8 @@ pub struct StateFilter {
 }
 
 impl EventFilter for StateFilter {
-    fn allow(&self, input: FilterInput) -> bool {
-        if &self.event_type != input.message_type {
+    fn allow(&self, input: FilterInput<'_>) -> bool {
+        if &self.event_type != input.event_type {
             return false;
         }
 
@@ -238,48 +204,48 @@ impl EventFilter for StateFilter {
     }
 }
 
-impl Serialize for TimelineFilter {
+fn from_type_and_suffix<S: Serializer>(
+    s: S,
+    ev_type: &str,
+    suffix: Option<&str>,
+) -> Result<S::Ok, S::Error> {
+    let serialized_string = format!("{}#{}", ev_type, suffix.unwrap_or(""));
+    s.serialize_str(&serialized_string)
+}
+impl Serialize for MessageFilter {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut string = format!("{}", self.event_type);
-        if let Some(msgtype) = &self.msgtype {
-            string = format!("{}#{}", string, msgtype);
-        }
-        serializer.serialize_str(&string)
+        from_type_and_suffix(serializer, &self.event_type, self.msgtype.as_deref())
     }
 }
 
 impl Serialize for StateFilter {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut string = format!(":{}", self.event_type);
-        if let Some(state_key) = &self.state_key {
-            string = format!("{}#{}", string, state_key);
-        }
-        serializer.serialize_str(&string)
+        from_type_and_suffix(serializer, &self.event_type, self.state_key.as_deref())
     }
+}
+
+fn to_type_and_suffix<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<(String, Option<String>), D::Error> {
+    let mut event_type = String::deserialize(deserializer)?;
+    let mut msgtype = None;
+    if let Some((ev_type, msg_type)) = event_type.clone().split_once("#") {
+        event_type = ev_type.to_owned();
+        msgtype = Some(msg_type.to_owned());
+    };
+    Ok((event_type, msgtype))
 }
 
 impl<'de> Deserialize<'de> for StateFilter {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let des_string = String::deserialize(deserializer)?;
-        let split: Vec<&str> = des_string.split("#").collect();
-        let ev_type = split[0].to_owned();
-        let mut state_key: Option<String> = None;
-        if split.len() > 1 {
-            state_key = Some(split[1].to_owned())
-        }
-        Ok(StateFilter { event_type: ev_type, state_key: state_key })
+        let (event_type, state_key) = to_type_and_suffix(deserializer)?;
+        Ok(StateFilter { event_type, state_key })
     }
 }
 
-impl<'de> Deserialize<'de> for TimelineFilter {
+impl<'de> Deserialize<'de> for MessageFilter {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let des_string = String::deserialize(deserializer)?;
-        let split: Vec<&str> = des_string.split("#").collect();
-        let ev_type = split[0].to_owned();
-        let mut msgtype: Option<String> = None;
-        if split.len() > 1 {
-            msgtype = Some(split[1].to_owned())
-        }
-        Ok(TimelineFilter { event_type: ev_type, msgtype: msgtype })
+        let (event_type, msgtype) = to_type_and_suffix(deserializer)?;
+        Ok(MessageFilter { event_type, msgtype })
     }
 }
