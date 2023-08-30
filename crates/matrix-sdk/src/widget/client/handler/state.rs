@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use tokio::sync::mpsc::UnboundedReceiver;
+use tracing::{info, warn};
 
 use super::{
-    outgoing, Capabilities, Client, Error, OpenIDResponse, OpenIDStatus, Reply, Result, WidgetProxy,
+    outgoing, Capabilities, Client, Error, IncomingRequest as Request, OpenIDResponse,
+    OpenIDStatus, Result, WidgetProxy,
 };
 use crate::widget::{
     messages::{
-        from_widget::{Action, ApiVersion, SupportedApiVersionsResponse},
+        from_widget::{ApiVersion, SupportedApiVersionsResponse},
         to_widget::{CapabilitiesResponse, CapabilitiesUpdatedRequest},
-        Empty, Header, MessageKind as Kind,
+        Empty,
     },
     Permissions,
 };
@@ -28,44 +30,40 @@ impl<W, C> State<W, C> {
 
 pub enum Task {
     NegotiateCapabilities,
-    HandleIncoming(IncomingRequest),
-}
-
-#[derive(Debug, Clone)]
-pub struct IncomingRequest {
-    pub header: Header,
-    pub action: Action,
+    HandleIncoming(Request),
 }
 
 impl<W: WidgetProxy, C: Client> State<W, C> {
     pub async fn listen(mut self, mut rx: UnboundedReceiver<Task>) {
         while let Some(msg) = rx.recv().await {
             match msg {
-                Task::HandleIncoming(req) => {
-                    if let Err(..) = self.handle(req.clone()).await {
-                        // TODO: We need to send an error to the widget if the
-                        // error was "normal",
-                        // i.e. a `Error::Other`. However, a
-                        // `WidgetDisconnected` is a terminal
-                        // error (we can get it if we try to send a message to
-                        // the widget as a response to
-                        // the incoming request and the widget's sink is dead at
-                        // the moment (widget
-                        // disconnected). Such terminal errors don't require any
-                        // specific action except for logging (?), use tracing
-                        // to log it here later.
+                Task::HandleIncoming(request) => {
+                    if let Err(err) = self.handle(request.clone()).await {
+                        if let Err(..) = self.widget.reply(request.fail(err.to_string())) {
+                            info!("Dropped reply, widget is disconnected");
+                            break;
+                        }
                     }
                 }
                 Task::NegotiateCapabilities => {
-                    let _ = self.initialise().await;
+                    if let Err(err) = self.initialise().await {
+                        // We really don't have a mechanism to inform a widget about out of bound
+                        // errors. So the only thing we can do here is to log it.
+                        warn!(error = %err, "Failed to initialise widget");
+                        break;
+                    }
                 }
             }
         }
     }
 
-    async fn handle(&mut self, IncomingRequest { header, action }: IncomingRequest) -> Result<()> {
-        match action {
-            Action::ContentLoaded(Kind::Request(req)) => {
+    async fn handle(&mut self, request: Request) -> Result<()> {
+        match request {
+            Request::GetSupportedApiVersion(req) => {
+                let _ = self.widget.reply(req.map(Ok(SupportedApiVersionsResponse::new())));
+            }
+
+            Request::ContentLoaded(req) => {
                 let (response, negotiate) =
                     match (self.widget.init_on_load(), self.capabilities.as_ref()) {
                         (true, None) => (Ok(Empty {}), true),
@@ -73,25 +71,19 @@ impl<W: WidgetProxy, C: Client> State<W, C> {
                         _ => (Ok(Empty {}), false),
                     };
 
-                self.reply(header, Action::ContentLoaded(req.map(response)))?;
+                let _ = self.widget.reply(req.map(response));
                 if negotiate {
                     self.initialise().await?;
                 }
             }
 
-            Action::GetSupportedApiVersion(Kind::Request(req)) => {
-                let response = req.map(Ok(SupportedApiVersionsResponse::new()));
-                self.reply(header, Action::GetSupportedApiVersion(response))?;
-            }
-
-            Action::GetOpenID(Kind::Request(req)) => {
-                let (reply, handle) = match self.client.get_openid(req.content.clone()) {
+            Request::GetOpenID(req) => {
+                let (reply, handle) = match self.client.get_openid((*req).clone()) {
                     OpenIDStatus::Resolved(decision) => (decision.into(), None),
                     OpenIDStatus::Pending(handle) => (OpenIDResponse::Pending, Some(handle)),
                 };
 
-                let response = req.map(Ok(reply));
-                self.reply(header, Action::GetOpenID(response))?;
+                let _ = self.widget.reply(req.map(Ok(reply)));
                 if let Some(handle) = handle {
                     let status = handle.await.map_err(|_| Error::WidgetDisconnected)?;
                     self.widget
@@ -101,39 +93,26 @@ impl<W: WidgetProxy, C: Client> State<W, C> {
                 }
             }
 
-            Action::ReadEvent(Kind::Request(req)) => {
+            Request::ReadEvent(req) => {
                 let fut = self
                     .caps()?
                     .reader
                     .as_ref()
                     .ok_or(Error::custom("No permissions to read events"))?
-                    .read(req.content.clone());
-                let response = req.map(Ok(fut.await?));
-                self.reply(header, Action::ReadEvent(response))?;
+                    .read((*req).clone());
+                let resp = Ok(fut.await?);
+                let _ = self.widget.reply(req.map(resp));
             }
 
-            Action::SendEvent(Kind::Request(req)) => {
+            Request::SendEvent(req) => {
                 let fut = self
                     .caps()?
                     .sender
                     .as_ref()
                     .ok_or(Error::custom("No permissions to send events"))?
-                    .send(req.content.clone());
-                let response = req.map(Ok(fut.await?));
-                self.reply(header, Action::SendEvent(response))?;
-            }
-
-            _ => {
-                // TODO: Widget sent:
-                // - A `FromWidget` response instead of sending a request. This
-                //   is
-                // actually not correct and widgets should not do this. We
-                // probably need to send an error in this case,
-                // clarify the format of this error later.
-                // - A new message kind that we don't support yet. We need to
-                //   send an error to the
-                // widget informing the widget that the message is not
-                // supported.
+                    .send((*req).clone());
+                let resp = Ok(fut.await?);
+                let _ = self.widget.reply(req.map(resp));
             }
         }
 
@@ -158,10 +137,6 @@ impl<W: WidgetProxy, C: Client> State<W, C> {
             .map_err(Error::WidgetErrorReply)?;
 
         Ok(())
-    }
-
-    fn reply(&self, header: Header, action: Action) -> Result<()> {
-        self.widget.reply(Reply { header, action })
     }
 
     fn caps(&mut self) -> Result<&mut Capabilities> {

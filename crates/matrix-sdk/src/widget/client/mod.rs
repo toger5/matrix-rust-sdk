@@ -2,6 +2,7 @@
 
 use std::{
     collections::HashMap,
+    result::Result as StdResult,
     sync::{Arc, Mutex},
 };
 
@@ -11,7 +12,7 @@ use tokio::sync::{mpsc::UnboundedSender, oneshot};
 use uuid::Uuid;
 
 use self::handler::{
-    Client, IncomingRequest, MessageHandler, Outgoing, Reply, Response, WidgetProxy,
+    Client, IncomingResponse, MessageHandler, OutgoingRequest, OutgoingResponse, WidgetProxy,
 };
 pub use self::{
     handler::{Error, Result},
@@ -46,12 +47,12 @@ pub async fn run<T: Client>(client: T, mut widget: Widget) -> Result<()> {
         match from_json::<Message>(&raw) {
             Ok(msg) => match msg.action {
                 // This is an incoming request from a widget.
-                Action::FromWidget(a) => {
-                    handler.handle(IncomingRequest { header: msg.header, action: a })?;
+                Action::FromWidget(action) => {
+                    handler.handle(msg.header, action)?;
                 }
                 // This is a response from the widget to our request (i.e. response to the outgoing
                 // request from our perspective).
-                Action::ToWidget(a) => {
+                Action::ToWidget(action) => {
                     let pending = state
                         .lock()
                         .expect("Pending mutex poisoned")
@@ -60,7 +61,7 @@ pub async fn run<T: Client>(client: T, mut widget: Widget) -> Result<()> {
                     if let Some(tx) = pending {
                         // It's ok if it fails here, it just means that the handler died and the
                         // handler only dies once the widget disconnects.
-                        let _ = tx.send(a);
+                        let _ = tx.send(action);
                     }
 
                     // TODO: We don't seem to have an error response for the
@@ -100,7 +101,7 @@ impl WidgetSink {
 
 #[async_trait]
 impl WidgetProxy for WidgetSink {
-    async fn send<T: Outgoing>(&self, msg: T) -> Result<Response<T::Response>> {
+    async fn send<T: OutgoingRequest>(&self, msg: T) -> Result<OutgoingResponse<T::Response>> {
         let id = Uuid::new_v4().to_string();
         let message = {
             let header = Header::new(&id, &self.info.id);
@@ -115,10 +116,10 @@ impl WidgetProxy for WidgetSink {
         Ok(T::extract_response(reply).ok_or(Error::custom("Widget sent invalid response"))?)
     }
 
-    fn reply(&self, reply: Reply) -> Result<()> {
-        let message = to_json(&Message::new(reply.header, Action::FromWidget(reply.action)))
-            .expect("Bug: can't serialise a message");
-        self.sink.send(message).map_err(|_| Error::WidgetDisconnected)
+    fn reply(&self, response: IncomingResponse) -> StdResult<(), ()> {
+        let message: Message = response.into();
+        let json = to_json(&message).expect("Bug: can't serialise a message");
+        self.sink.send(json).map_err(|_| ())
     }
 
     fn init_on_load(&self) -> bool {

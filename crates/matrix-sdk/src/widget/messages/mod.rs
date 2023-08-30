@@ -3,7 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 pub use self::{
-    actions::{from_widget, to_widget, Action, Empty, MessageKind, Request, Response},
+    actions::{
+        from_widget, to_widget, Action, Empty, MessageKind, Request, Response, ResponseBody,
+    },
     event::{EventType, MatrixEvent},
     openid::{Request as OpenIDRequest, Response as OpenIDResponse, State as OpenIDState},
 };

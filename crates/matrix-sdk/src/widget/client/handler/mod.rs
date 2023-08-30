@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{result::Result as StdResult, sync::Arc};
 
 use async_trait::async_trait;
 use tokio::sync::{
@@ -10,27 +10,28 @@ use self::state::{State, Task as StateTask};
 pub use self::{
     capabilities::{Capabilities, EventReader, EventSender, Filtered},
     error::{Error, Result},
+    incoming::{Request as IncomingRequest, Response as IncomingResponse},
     openid::{OpenIDDecision, OpenIDStatus},
-    outgoing::{Request as Outgoing, Response},
-    state::IncomingRequest,
+    outgoing::{Request as OutgoingRequest, Response as OutgoingResponse},
 };
 use crate::widget::{
     messages::{
         from_widget::{Action, SupportedApiVersionsResponse},
-        Header, MessageKind, OpenIDRequest, OpenIDResponse, OpenIDState,
+        Header, OpenIDRequest, OpenIDResponse, OpenIDState,
     },
     Permissions,
 };
 
 mod capabilities;
 mod error;
+mod incoming;
 mod outgoing;
 mod state;
 
 #[async_trait]
 pub trait WidgetProxy: Send + Sync + 'static {
-    async fn send<T: Outgoing>(&self, req: T) -> Result<Response<T::Response>>;
-    fn reply(&self, reply: Reply) -> Result<()>;
+    async fn send<T: OutgoingRequest>(&self, req: T) -> Result<OutgoingResponse<T::Response>>;
+    fn reply(&self, response: IncomingResponse) -> StdResult<(), ()>;
     fn init_on_load(&self) -> bool;
 }
 
@@ -60,32 +61,18 @@ impl<W: WidgetProxy> MessageHandler<W> {
         Self { widget, state_tx }
     }
 
-    pub fn handle(&self, req: IncomingRequest) -> Result<()> {
-        match req.action {
-            Action::GetSupportedApiVersion(MessageKind::Request(r)) => {
-                let response = r.map(Ok(SupportedApiVersionsResponse::new()));
-                self.widget.reply(Reply {
-                    header: req.header,
-                    action: Action::GetSupportedApiVersion(response),
-                })?;
-            }
-
-            _ => {
-                self.state_tx
-                    .send(StateTask::HandleIncoming(req))
-                    .map_err(|_| Error::WidgetDisconnected)?;
-            }
+    pub fn handle(&self, header: Header, action: Action) -> Result<()> {
+        match IncomingRequest::new(header, action).ok_or(Error::custom("Invalid message"))? {
+            IncomingRequest::GetSupportedApiVersion(req) => self
+                .widget
+                .reply(req.map(Ok(SupportedApiVersionsResponse::new())))
+                .map_err(|_| Error::WidgetDisconnected),
+            request => self
+                .state_tx
+                .send(StateTask::HandleIncoming(request))
+                .map_err(|_| Error::WidgetDisconnected),
         }
-
-        Ok(())
     }
-}
-
-pub struct Reply {
-    pub header: Header,
-    // TODO: Define a new type, so that we can guarantee on compile time that we can only send
-    // `Action(Kind::Response)` here and not `Action(Kind::Request)`.
-    pub action: Action,
 }
 
 mod openid {
