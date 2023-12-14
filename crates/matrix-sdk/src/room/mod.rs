@@ -42,6 +42,7 @@ use ruma::{
     },
     assign,
     events::{
+        call::notify::{CallNotifyEventContent, NotifyType},
         direct::DirectEventContent,
         receipt::{Receipt, ReceiptThread, ReceiptType},
         room::{
@@ -57,8 +58,9 @@ use ruma::{
         },
         space::{child::SpaceChildEventContent, parent::SpaceParentEventContent},
         tag::{TagInfo, TagName},
-        AnyRoomAccountDataEvent, AnyStateEvent, EmptyStateKey, MessageLikeEventContent,
-        MessageLikeEventType, RedactContent, RedactedStateEventContent, RoomAccountDataEvent,
+        AnyMessageLikeEvent, AnyRoomAccountDataEvent, AnyStateEvent, AnyTimelineEvent,
+        EmptyStateKey, MessageLikeEvent, MessageLikeEventContent, MessageLikeEventType,
+        RedactContent, RedactedStateEventContent, RoomAccountDataEvent,
         RoomAccountDataEventContent, RoomAccountDataEventType, StateEventContent, StateEventType,
         StaticEventContent, StaticStateEventContent, SyncStateEvent,
     },
@@ -2267,8 +2269,17 @@ impl Room {
         };
 
         let push_rules = self.client().account().push_rules().await?;
-
         Ok(Some(push_rules.get_actions(event, &push_context).to_owned()))
+        // match event.
+        // deserialize_as::<MessageLikeEvent<CallNotifyEventContent>>() {
+        //     Ok(call_notify_event) => match
+        // call_notify_event.as_original()?.content.notify_type {
+        //         NotifyType::Ring => {}
+        //         NotifyType::Notify => {}
+        //         _ => todo!(),
+        //     },
+        //     Err(_) => Ok(Some(push_rules.get_actions(event,
+        // &push_context).to_owned())), }
     }
 
     /// The membership details of the (latest) invite for the logged-in user in

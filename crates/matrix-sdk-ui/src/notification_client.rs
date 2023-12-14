@@ -17,6 +17,8 @@ use std::{
     time::Duration,
 };
 
+use eyeball::subscriber;
+use futures_core::Future;
 use futures_util::{pin_mut, StreamExt as _};
 use matrix_sdk::{room::Room, Client, ClientBuildError, SlidingSyncList, SlidingSyncMode};
 use matrix_sdk_base::{
@@ -30,6 +32,7 @@ use ruma::{
     },
     assign,
     events::{
+        call::notify::{NotifyType, SyncCallNotifyEvent},
         room::{member::StrippedRoomMemberEvent, message::SyncRoomMessageEvent},
         AnyFullStateEventContent, AnyStateEvent, AnySyncMessageLikeEvent, AnySyncTimelineEvent,
         FullStateEventContent, StateEventType, TimelineEventType,
@@ -40,7 +43,14 @@ use ruma::{
     uint, EventId, OwnedEventId, RoomId, UserId,
 };
 use thiserror::Error;
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::{
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver},
+        oneshot::channel,
+        Mutex as AsyncMutex,
+    },
+    time::sleep,
+};
 use tracing::{debug, info, instrument, trace, warn};
 
 use crate::{
@@ -110,7 +120,6 @@ pub struct NotificationClient {
 impl NotificationClient {
     const CONNECTION_ID: &'static str = "notifications";
     const LOCK_ID: &'static str = "notifications";
-
     /// Create a new builder for a notification client.
     pub async fn builder(
         client: Client,
@@ -209,7 +218,7 @@ impl NotificationClient {
                     for _ in 0..3 {
                         trace!("waiting for decryption…");
 
-                        tokio::time::sleep(Duration::from_millis(wait)).await;
+                        sleep(Duration::from_millis(wait)).await;
 
                         match room.decrypt_event(raw_event.cast_ref()).await {
                             Ok(new_event) => {
@@ -350,6 +359,7 @@ impl NotificationClient {
             (StateEventType::RoomCanonicalAlias, "".to_owned()),
             (StateEventType::RoomName, "".to_owned()),
             (StateEventType::RoomPowerLevels, "".to_owned()),
+            (StateEventType::CallMember, self.client.user_id().unwrap().to_string()),
         ];
 
         let invites = SlidingSyncList::builder("invites")
@@ -623,24 +633,89 @@ pub struct NotificationItem {
     /// It is set if and only if the push actions could be determined.
     pub is_noisy: Option<bool>,
     pub has_mention: Option<bool>,
+
+    pub starts_ringing: Option<bool>,
+    pub stop_ringing: Option<UnboundedReceiver<bool>>,
 }
 
 impl NotificationItem {
+    const RING_MAX_DURATION: Duration = Duration::from_secs(15);
+
     async fn new(
         room: &Room,
         raw_event: &RawNotificationEvent,
         push_actions: Option<&[Action]>,
         state_events: Vec<Raw<AnyStateEvent>>,
     ) -> Result<Self, Error> {
+        let mut starts_ringing = None;
+        let mut stop_ringing = None;
         let event = match raw_event {
             RawNotificationEvent::Timeline(raw_event) => {
                 let mut event = raw_event.deserialize().map_err(|_| Error::InvalidRumaEvent)?;
-                if let AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::RoomMessage(
-                    SyncRoomMessageEvent::Original(ev),
-                )) = &mut event
-                {
-                    ev.content.sanitize(DEFAULT_SANITIZER_MODE, RemoveReplyFallback::Yes);
-                }
+                match &mut event {
+                    AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::RoomMessage(
+                        SyncRoomMessageEvent::Original(ev),
+                    )) => {
+                        ev.content.sanitize(DEFAULT_SANITIZER_MODE, RemoveReplyFallback::Yes);
+                    }
+                    AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::CallNotify(
+                        SyncCallNotifyEvent::Original(ev),
+                    )) => {
+                        if !room.active_room_call_participants().is_empty() {
+                            // Don't send ring notification when call is already happening.
+                            return Err(Error::UnknownRoom);
+                        }
+                        // // TODO: delete this its equivalent to the above
+                        // if state_events.iter().any(|e| {
+                        //     e.get_field("event_id").unwrap() == Some(ev.content.call_id.clone())
+                        // }) {
+                        //     // ignore ring notification when call is already happening part of
+                        // the     // call.
+                        //     return Err(Error::UnknownRoom);
+                        // }
+                        starts_ringing = Some(match ev.content.notify_type {
+                            NotifyType::Ring => true,
+                            NotifyType::Notify => false,
+                            _ => false,
+                        });
+                        let mut subscriber = Some(room.subscribe_info());
+                        let (tx, rx) = unbounded_channel::<bool>();
+                        stop_ringing = Some(rx);
+                        {
+                            let tx = tx.clone();
+                            tokio::spawn(async move {
+                                sleep(Self::RING_MAX_DURATION).await;
+                                let _ = tx.send(true);
+                                // subscriber = None;
+                            });
+                        }
+                        {
+                            while let Some(room_info) = subscriber.as_mut().unwrap().next().await {
+                                if room_info
+                                    .active_room_call_participants()
+                                    .contains(&room.client().user_id().unwrap().to_owned())
+                                {
+                                    tx.send(true);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                };
+
+                // if let AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::RoomMessage(
+                //     SyncRoomMessageEvent::Original(ev),
+                // )) = &mut event
+                // {
+                //     ev.content.sanitize(DEFAULT_SANITIZER_MODE, RemoveReplyFallback::Yes);
+                // }
+                // if let AnySyncTimelineEvent::MessageLike(AnySyncMessageLikeEvent::CallNotify(
+                //     notify_event,
+                // )) = &mut event
+                // {
+                //     starts_ringing = Some(notify_event.content.notify_type ==
+                // NotifyType::Ring); }
                 NotificationEvent::Timeline(event)
             }
             RawNotificationEvent::Invite(raw_event) => NotificationEvent::Invite(
@@ -700,6 +775,8 @@ impl NotificationItem {
             joined_members_count: room.joined_members_count(),
             is_noisy,
             has_mention,
+            starts_ringing,
+            stop_ringing,
         };
 
         Ok(item)

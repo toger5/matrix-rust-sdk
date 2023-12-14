@@ -161,6 +161,7 @@ pub enum StateEventType {
     RoomTopic,
     SpaceChild,
     SpaceParent,
+    CallMember,
 }
 
 impl From<StateEventType> for ruma::events::StateEventType {
@@ -187,6 +188,7 @@ impl From<StateEventType> for ruma::events::StateEventType {
             StateEventType::RoomTopic => Self::RoomTopic,
             StateEventType::SpaceChild => Self::SpaceChild,
             StateEventType::SpaceParent => Self::SpaceParent,
+            StateEventType::CallMember => Self::CallMember,
         }
     }
 }
@@ -209,6 +211,7 @@ pub enum MessageLikeEventType {
     RoomMessage,
     RoomRedaction,
     Sticker,
+    CallNotify,
 }
 
 impl From<MessageLikeEventType> for ruma::events::MessageLikeEventType {
@@ -230,6 +233,7 @@ impl From<MessageLikeEventType> for ruma::events::MessageLikeEventType {
             MessageLikeEventType::RoomMessage => Self::RoomMessage,
             MessageLikeEventType::RoomRedaction => Self::RoomRedaction,
             MessageLikeEventType::Sticker => Self::Sticker,
+            MessageLikeEventType::CallNotify => Self::CallNotify,
         }
     }
 }
