@@ -26,12 +26,11 @@ use std::{
 
 use growable_bloom_filter::{GrowableBloom, GrowableBloomBuilder};
 use matrix_sdk::{crypto::types::events::UtdCause, Client};
+use matrix_sdk::executor::{spawn, JoinHandle};
 use matrix_sdk_base::{StateStoreDataKey, StateStoreDataValue, StoreError};
 use ruma::{EventId, OwnedEventId};
 use tokio::{
-    spawn,
     sync::{Mutex as AsyncMutex, MutexGuard},
-    task::JoinHandle,
     time::sleep,
 };
 use tracing::error;

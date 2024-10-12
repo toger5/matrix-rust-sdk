@@ -34,12 +34,14 @@ tokio = { workspace = true, features = ["rt", "time"] }
 uniffi = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-futures-util = { workspace = true, features = ["channel"] }
 wasm-bindgen-futures = { version = "0.4.33", optional = true }
 gloo-timers = { workspace = true, features = ["futures"] }
 web-sys = { workspace = true, features = ["console"] }
 tracing-subscriber = { workspace = true, features = ["fmt", "ansi"] }
 wasm-bindgen = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+futures-util = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }

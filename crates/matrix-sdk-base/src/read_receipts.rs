@@ -266,7 +266,16 @@ impl RoomReadReceipts {
 }
 
 /// Provider for timeline events prior to the current sync.
+#[cfg(not(target_arch = "wasm32"))]
 pub trait PreviousEventsProvider: Send + Sync {
+    /// Returns the list of known timeline events, in sync order, for the given
+    /// room.
+    fn for_room(&self, room_id: &RoomId) -> Vector<SyncTimelineEvent>;
+}
+
+/// Provider for timeline events prior to the current sync.
+#[cfg(target_arch = "wasm32")]
+pub trait PreviousEventsProvider {
     /// Returns the list of known timeline events, in sync order, for the given
     /// room.
     fn for_room(&self, room_id: &RoomId) -> Vector<SyncTimelineEvent>;

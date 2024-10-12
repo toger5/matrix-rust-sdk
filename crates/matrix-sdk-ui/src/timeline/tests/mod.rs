@@ -31,6 +31,7 @@ use matrix_sdk::{
     config::RequestConfig,
     deserialized_responses::{SyncTimelineEvent, TimelineEvent},
     event_cache::paginator::{PaginableRoom, PaginatorError},
+    executor::{BoxFuture, BoxFutureExt},
     room::{EventWithContextResponse, Messages, MessagesOptions},
     send_queue::RoomSendQueueUpdate,
     BoxFuture,
@@ -392,7 +393,7 @@ impl RoomDataProvider for TestRoomDataProvider {
     }
 
     fn profile_from_user_id<'a>(&'a self, _user_id: &'a UserId) -> BoxFuture<'a, Option<Profile>> {
-        ready(None).boxed()
+        ready(None).box_future()
     }
 
     fn profile_from_latest_event(&self, _latest_event: &LatestEvent) -> Option<Profile> {
@@ -412,7 +413,7 @@ impl RoomDataProvider for TestRoomDataProvider {
                 .and_then(|user_map| user_map.get(user_id))
                 .cloned(),
         )
-        .boxed()
+        .box_future()
     }
 
     fn load_event_receipts(
@@ -424,7 +425,7 @@ impl RoomDataProvider for TestRoomDataProvider {
         } else {
             IndexMap::new()
         })
-        .boxed()
+        .box_future()
     }
 
     fn push_rules_and_context(&self) -> BoxFuture<'_, Option<(Ruleset, PushConditionRoomCtx)>> {
@@ -442,11 +443,11 @@ impl RoomDataProvider for TestRoomDataProvider {
             power_levels: Some(power_levels),
         };
 
-        ready(Some((push_rules, push_context))).boxed()
+        ready(Some((push_rules, push_context))).box_future()
     }
 
     fn load_fully_read_marker(&self) -> BoxFuture<'_, Option<OwnedEventId>> {
-        ready(self.fully_read_marker.clone()).boxed()
+        ready(self.fully_read_marker.clone()).box_future()
     }
 
     fn send(&self, content: AnyMessageLikeEventContent) -> BoxFuture<'_, Result<(), super::Error>> {
@@ -454,7 +455,7 @@ impl RoomDataProvider for TestRoomDataProvider {
             self.sent_events.write().await.push(content);
             Ok(())
         }
-        .boxed()
+        .box_future()
     }
 
     fn redact<'a>(
@@ -467,7 +468,7 @@ impl RoomDataProvider for TestRoomDataProvider {
             self.redacted.write().await.push(event_id.to_owned());
             Ok(())
         }
-        .boxed()
+        .box_future()
     }
 
     fn room_info(&self) -> Subscriber<RoomInfo> {
