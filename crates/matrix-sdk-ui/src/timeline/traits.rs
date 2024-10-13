@@ -23,7 +23,7 @@ use matrix_sdk::{
     deserialized_responses::TimelineEvent,
     event_cache::paginator::PaginableRoom,
     executor::{BoxFuture, BoxFutureExt as _},
-    AsyncTraitDeps, Result, Room,
+    AsyncTraitDeps, Result, Room, SendOutsideWasm, SyncOutsideWasm,
 };
 use matrix_sdk_base::{latest_event::LatestEvent, RoomInfo};
 use ruma::{

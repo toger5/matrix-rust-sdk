@@ -25,7 +25,6 @@ use std::{
 use eyeball::{SharedObservable, Subscriber};
 use eyeball_im::VectorDiff;
 use futures_core::Stream;
-use futures_util::FutureExt as _;
 use indexmap::IndexMap;
 use matrix_sdk::{
     config::RequestConfig,
@@ -34,7 +33,6 @@ use matrix_sdk::{
     executor::{BoxFuture, BoxFutureExt},
     room::{EventWithContextResponse, Messages, MessagesOptions},
     send_queue::RoomSendQueueUpdate,
-    BoxFuture,
 };
 use matrix_sdk_base::{
     crypto::types::events::CryptoContextInfo, latest_event::LatestEvent, RoomInfo, RoomState,

@@ -123,7 +123,10 @@ use std::{
 };
 
 use eyeball_im::Vector;
-use matrix_sdk_common::{deserialized_responses::SyncTimelineEvent, ring_buffer::RingBuffer};
+use matrix_sdk_common::{
+    deserialized_responses::SyncTimelineEvent, ring_buffer::RingBuffer, SendOutsideWasm,
+    SyncOutsideWasm,
+};
 use ruma::{
     events::{
         poll::{start::PollStartEventContent, unstable_start::UnstablePollStartEventContent},
@@ -266,16 +269,7 @@ impl RoomReadReceipts {
 }
 
 /// Provider for timeline events prior to the current sync.
-#[cfg(not(target_arch = "wasm32"))]
-pub trait PreviousEventsProvider: Send + Sync {
-    /// Returns the list of known timeline events, in sync order, for the given
-    /// room.
-    fn for_room(&self, room_id: &RoomId) -> Vector<SyncTimelineEvent>;
-}
-
-/// Provider for timeline events prior to the current sync.
-#[cfg(target_arch = "wasm32")]
-pub trait PreviousEventsProvider {
+pub trait PreviousEventsProvider: SendOutsideWasm + SyncOutsideWasm {
     /// Returns the list of known timeline events, in sync order, for the given
     /// room.
     fn for_room(&self, room_id: &RoomId) -> Vector<SyncTimelineEvent>;

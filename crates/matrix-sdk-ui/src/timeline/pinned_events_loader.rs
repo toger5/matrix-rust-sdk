@@ -16,7 +16,10 @@ use std::{fmt::Formatter, sync::Arc};
 
 use futures_util::{stream, StreamExt};
 use matrix_sdk::{
-    config::RequestConfig, event_cache::paginator::PaginatorError, executor::{BoxFuture, BoxFutureExt}, Room,
+    config::RequestConfig,
+    event_cache::paginator::PaginatorError,
+    executor::{BoxFuture, BoxFutureExt},
+    Room,
 };
 use matrix_sdk_base::deserialized_responses::SyncTimelineEvent;
 use ruma::{events::relation::RelationType, EventId, MilliSecondsSinceUnixEpoch, OwnedEventId};

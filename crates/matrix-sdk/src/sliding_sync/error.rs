@@ -1,7 +1,7 @@
 //! Sliding Sync errors.
 
-use thiserror::Error;
 use matrix_sdk_common::executor::JoinError;
+use thiserror::Error;
 
 /// Internal representation of errors in Sliding Sync.
 #[derive(Error, Debug)]
