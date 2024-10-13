@@ -15,6 +15,8 @@ rustls-tls = ["matrix-sdk/rustls-tls"]
 
 uniffi = ["dep:uniffi", "matrix-sdk/uniffi", "matrix-sdk-base/uniffi"]
 
+js = ["matrix-sdk/js"]
+
 # Add support for encrypted extensible events.
 unstable-msc3956 = ["ruma/unstable-msc3956"]
 
@@ -35,7 +37,10 @@ growable-bloom-filter = { workspace = true }
 imbl = { workspace = true, features = ["serde"] }
 indexmap = { workspace = true }
 itertools = { workspace = true }
-matrix-sdk = { workspace = true, features = ["experimental-sliding-sync", "e2e-encryption"] }
+matrix-sdk = { workspace = true, features = [
+    "experimental-sliding-sync",
+    "e2e-encryption",
+] }
 matrix-sdk-base = { workspace = true }
 mime = { workspace = true }
 once_cell = { workspace = true }
@@ -49,6 +54,7 @@ tokio-stream = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["attributes"] }
 unicode-normalization = { workspace = true }
 uniffi = { workspace = true, optional = true }
+web-time = "1.1.0"
 
 [dev-dependencies]
 anyhow = { workspace = true }

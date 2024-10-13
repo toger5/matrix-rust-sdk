@@ -14,11 +14,13 @@
 
 //! States and actions for the `RoomList` state machine.
 
-use std::{
-    future::ready,
-    sync::Mutex,
-    time::{Duration, Instant},
-};
+use std::{future::ready, sync::Mutex, time::Duration};
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 use eyeball::{SharedObservable, Subscriber};
 use matrix_sdk::{sliding_sync::Range, SlidingSync, SlidingSyncMode};

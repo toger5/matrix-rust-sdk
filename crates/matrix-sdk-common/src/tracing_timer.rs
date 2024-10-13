@@ -11,10 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 use tracing::{callsite::DefaultCallsite, Callsite as _};
+
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
 
 /// A named RAII that will show on Drop how long its covered section took to
 /// execute.
