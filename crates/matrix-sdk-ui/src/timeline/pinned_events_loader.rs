@@ -19,7 +19,7 @@ use matrix_sdk::{
     config::RequestConfig,
     event_cache::paginator::PaginatorError,
     executor::{BoxFuture, BoxFutureExt},
-    Room,
+    Room, SendOutsideWasm, SyncOutsideWasm,
 };
 use matrix_sdk_base::deserialized_responses::SyncTimelineEvent;
 use ruma::{events::relation::RelationType, EventId, MilliSecondsSinceUnixEpoch, OwnedEventId};
@@ -122,7 +122,7 @@ impl PinnedEventsLoader {
     }
 }
 
-pub trait PinnedEventsRoom: Send + Sync {
+pub trait PinnedEventsRoom: SendOutsideWasm + SyncOutsideWasm {
     /// Load a single room event using the cache or network and any events
     /// related to it, if they are cached.
     ///
