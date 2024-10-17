@@ -20,6 +20,7 @@ use eyeball::Subscriber;
 use matrix_sdk_base::deserialized_responses::SyncTimelineEvent;
 use matrix_sdk_common::linked_chunk::ChunkContent;
 use tokio::time::timeout;
+use tokio_with_wasm::alias as tokio;
 use tracing::{debug, instrument, trace};
 
 use super::{

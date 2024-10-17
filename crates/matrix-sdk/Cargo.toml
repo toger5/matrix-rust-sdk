@@ -16,26 +16,42 @@ features = ["docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["e2e-encryption", "automatic-room-key-forwarding", "sqlite", "native-tls", "js"]
-testing = ["matrix-sdk-sqlite?/testing", "matrix-sdk-indexeddb?/testing", "matrix-sdk-base/testing", "wiremock", "matrix-sdk-test", "assert_matches2"]
+default = [
+    "e2e-encryption",
+    "automatic-room-key-forwarding",
+    "sqlite",
+    "native-tls",
+    "js",
+]
+testing = [
+    "matrix-sdk-sqlite?/testing",
+    "matrix-sdk-indexeddb?/testing",
+    "matrix-sdk-base/testing",
+    "wiremock",
+    "matrix-sdk-test",
+    "assert_matches2",
+]
 
 e2e-encryption = [
     "matrix-sdk-base/e2e-encryption",
-    "matrix-sdk-sqlite?/crypto-store",        # activate crypto-store on sqlite if given
-    "matrix-sdk-indexeddb?/e2e-encryption",   # activate on indexeddb if given
+    "matrix-sdk-sqlite?/crypto-store",      # activate crypto-store on sqlite if given
+    "matrix-sdk-indexeddb?/e2e-encryption", # activate on indexeddb if given
 ]
 js = ["matrix-sdk-common/js", "matrix-sdk-base/js"]
 
 sqlite = [
     "dep:matrix-sdk-sqlite",
     "matrix-sdk-sqlite?/state-store",
-    "matrix-sdk-sqlite?/event-cache"
+    "matrix-sdk-sqlite?/event-cache",
 ]
 bundled-sqlite = ["sqlite", "matrix-sdk-sqlite?/bundled"]
 indexeddb = ["matrix-sdk-indexeddb/state-store"]
 
 qrcode = ["e2e-encryption", "matrix-sdk-base/qrcode"]
-automatic-room-key-forwarding = ["e2e-encryption", "matrix-sdk-base/automatic-room-key-forwarding"]
+automatic-room-key-forwarding = [
+    "e2e-encryption",
+    "matrix-sdk-base/automatic-room-key-forwarding",
+]
 markdown = ["ruma/markdown"]
 native-tls = ["reqwest/native-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
@@ -99,8 +115,15 @@ mime = { workspace = true }
 mime2ext = "0.1.53"
 once_cell = { workspace = true }
 pin-project-lite = { workspace = true }
-rand = { workspace = true , optional = true }
-ruma = { workspace = true, features = ["rand", "unstable-msc2448", "unstable-msc2965", "unstable-msc3930", "unstable-msc3245-v1-compat", "unstable-msc2867"] }
+rand = { workspace = true, optional = true }
+ruma = { workspace = true, features = [
+    "rand",
+    "unstable-msc2448",
+    "unstable-msc2965",
+    "unstable-msc3930",
+    "unstable-msc3245-v1-compat",
+    "unstable-msc2867",
+] }
 serde = { workspace = true }
 serde_html_form = { workspace = true }
 serde_json = { workspace = true }
@@ -121,6 +144,7 @@ zeroize = { workspace = true }
 gloo-timers = { workspace = true, features = ["futures"] }
 reqwest = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
+tokio_with_wasm = { workspace = true, features = ["macros"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backoff = { version = "0.4.0", features = ["tokio"] }
@@ -130,6 +154,7 @@ openidconnect = { version = "4.0.0-rc.1", optional = true }
 reqwest = { workspace = true, features = ["stream"] }
 tokio = { workspace = true, features = ["fs", "rt", "macros"] }
 tokio-util = "0.7.12"
+tokio_with_wasm = { workspace = true, features = ["macros"] }
 wiremock = { workspace = true, optional = true }
 
 [dev-dependencies]

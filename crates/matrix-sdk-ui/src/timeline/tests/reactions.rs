@@ -25,6 +25,9 @@ use ruma::{
     MilliSecondsSinceUnixEpoch, OwnedEventId,
 };
 use stream_assert::assert_next_matches;
+
+use tokio_with_wasm::alias as tokio;
+
 use tokio::time::timeout;
 
 use crate::timeline::{

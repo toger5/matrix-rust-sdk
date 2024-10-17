@@ -51,6 +51,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true, features = ["sync"] }
+tokio_with_wasm = { workspace = true, features = ["macros"] }
 tracing = { workspace = true, features = ["attributes"] }
 unicode-normalization = { workspace = true }
 uniffi = { workspace = true, optional = true }

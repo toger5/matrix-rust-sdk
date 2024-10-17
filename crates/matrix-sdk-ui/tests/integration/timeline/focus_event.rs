@@ -30,6 +30,9 @@ use matrix_sdk_test::{
 use matrix_sdk_ui::{timeline::TimelineFocus, Timeline};
 use ruma::{event_id, events::room::message::RoomMessageEventContent, room_id};
 use stream_assert::assert_pending;
+
+use tokio_with_wasm::alias as tokio;
+
 use tokio::time::sleep;
 
 use crate::{mock_context, mock_messages, mock_sync};

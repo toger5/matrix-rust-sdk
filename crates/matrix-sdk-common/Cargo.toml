@@ -31,6 +31,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time"] }
+tokio_with_wasm = { workspace = true, features = ["rt", "time"] }
+
 uniffi = { workspace = true, optional = true }
 web-time = "1.1.0"
 

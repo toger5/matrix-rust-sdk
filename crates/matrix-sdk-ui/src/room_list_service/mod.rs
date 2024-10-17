@@ -72,6 +72,9 @@ pub use room_list::*;
 use ruma::{assign, directory::RoomTypeFilter, events::StateEventType, OwnedRoomId, RoomId, UInt};
 pub use state::*;
 use thiserror::Error;
+
+use tokio_with_wasm::alias as tokio;
+
 use tokio::time::timeout;
 use tracing::debug;
 

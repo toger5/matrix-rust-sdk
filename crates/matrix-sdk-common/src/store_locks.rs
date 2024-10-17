@@ -46,6 +46,8 @@ use std::{
     time::Duration,
 };
 
+use tokio_with_wasm::alias as tokio;
+
 use tokio::{sync::Mutex, time::sleep};
 use tracing::{debug, error, info, instrument, trace};
 

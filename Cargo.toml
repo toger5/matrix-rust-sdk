@@ -79,6 +79,7 @@ stream_assert = "0.1.1"
 tempfile = "3.9.0"
 thiserror = "2.0.3"
 tokio = { version = "1.41.1", default-features = false, features = ["sync"] }
+tokio_with_wasm = { version = "0.7.1", features = ["sync"] }
 tokio-stream = "0.1.14"
 tracing = { version = "0.1.40", default-features = false, features = ["std"] }
 tracing-core = "0.1.32"

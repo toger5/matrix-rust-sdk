@@ -32,6 +32,9 @@ use matrix_sdk::{
 };
 use matrix_sdk_base::{StateStoreDataKey, StateStoreDataValue, StoreError};
 use ruma::{EventId, OwnedEventId};
+
+use tokio_with_wasm::alias as tokio;
+
 use tokio::{
     sync::{Mutex as AsyncMutex, MutexGuard},
     time::sleep,
