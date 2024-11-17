@@ -13,11 +13,10 @@
 // limitations under the License.
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
-
-use tracing::{callsite::DefaultCallsite, Callsite as _};
-
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
+
+use tracing::{callsite::DefaultCallsite, Callsite as _};
 
 /// A named RAII that will show on Drop how long its covered section took to
 /// execute.

@@ -1,7 +1,6 @@
 use std::{
     path::Path,
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -21,6 +20,7 @@ use matrix_sdk::{
             AnyMessageLikeEventContent, AnySyncTimelineEvent, OriginalSyncMessageLikeEvent,
         },
         serde::Raw,
+        time::{Duration, Instant},
         EventEncryptionAlgorithm, OwnedEventId, OwnedRoomId, RoomId,
     },
     Client, Room,

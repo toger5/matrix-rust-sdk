@@ -21,7 +21,6 @@
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
 };
 
 use growable_bloom_filter::{GrowableBloom, GrowableBloomBuilder};
@@ -31,7 +30,10 @@ use matrix_sdk::{
     Client,
 };
 use matrix_sdk_base::{StateStoreDataKey, StateStoreDataValue, StoreError};
-use ruma::{EventId, OwnedEventId};
+use ruma::{
+    time::{Duration, Instant},
+    EventId, OwnedEventId,
+};
 
 use tokio_with_wasm::alias as tokio;
 

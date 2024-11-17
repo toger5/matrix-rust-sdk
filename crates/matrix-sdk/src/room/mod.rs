@@ -19,7 +19,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
     sync::Arc,
-    time::Duration,
 };
 
 #[cfg(all(feature = "e2e-encryption", not(target_arch = "wasm32")))]
@@ -104,7 +103,7 @@ use ruma::{
     },
     push::{Action, PushConditionRoomCtx},
     serde::Raw,
-    time::Instant,
+    time::{Duration, Instant},
     EventId, Int, MatrixToUri, MatrixUri, MxcUri, OwnedEventId, OwnedRoomId, OwnedServerName,
     OwnedTransactionId, OwnedUserId, RoomId, TransactionId, UInt, UserId,
 };
