@@ -43,9 +43,6 @@ web-sys = { workspace = true, features = ["console"] }
 tracing-subscriber = { workspace = true, features = ["fmt", "ansi"] }
 wasm-bindgen = { workspace = true }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-futures-util = { workspace = true }
-
 [dev-dependencies]
 assert_matches = { workspace = true }
 proptest = { workspace = true }
@@ -55,6 +52,7 @@ wasm-bindgen-test = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Enable the test macro.
 tokio = { workspace = true, features = ["rt", "macros"] }
+futures-util = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 # Enable the JS feature for getrandom.

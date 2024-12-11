@@ -151,7 +151,7 @@ pub trait JoinHandleExt<T> {
 
 impl<T> JoinHandleExt<T> for JoinHandle<T> {
     fn abort_on_drop(self) -> AbortOnDrop<T> {
-        AbortOnDrop::new(self)
+        AbortOnDrop::<T>::new(self)
     }
 }
 #[cfg(test)]

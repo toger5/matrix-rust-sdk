@@ -23,7 +23,7 @@ use matrix_sdk::{
     deserialized_responses::TimelineEvent,
     event_cache::paginator::PaginableRoom,
     executor::{BoxFuture, BoxFutureExt as _},
-    AsyncTraitDeps, Result, Room, SendOutsideWasm, SyncOutsideWasm,
+    AsyncTraitDeps, Result, Room,
 };
 use matrix_sdk_base::{latest_event::LatestEvent, RoomInfo};
 use ruma::{
@@ -137,7 +137,7 @@ impl RoomDataProvider for Room {
     }
 
     fn crypto_context_info(&self) -> BoxFuture<'_, CryptoContextInfo> {
-        async move { self.crypto_context_info().await }.boxed()
+        async move { self.crypto_context_info().await }.box_future()
     }
 
     fn profile_from_user_id<'a>(&'a self, user_id: &'a UserId) -> BoxFuture<'a, Option<Profile>> {
