@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - The size of the WAL files is now limited to 10MB. This avoids cases where the
   WAL file takes as much space as the database.
   ([#4602](https://github.com/matrix-org/matrix-rust-sdk/pull/4602))
+  ([#4603](https://github.com/matrix-org/matrix-rust-sdk/pull/4603))
 
 ## [0.9.0] - 2024-12-18
 
