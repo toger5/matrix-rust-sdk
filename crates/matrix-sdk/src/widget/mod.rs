@@ -16,12 +16,6 @@
 
 use std::{fmt, time::Duration};
 
-use async_channel::{Receiver, Sender};
-use ruma::api::client::delayed_events::DelayParameters;
-use serde::de::{self, Deserialize, Deserializer, Visitor};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tokio_util::sync::{CancellationToken, DropGuard};
-
 use self::{
     machine::{
         Action, IncomingMessage, MatrixDriverRequestData, MatrixDriverResponse, SendEventRequest,
@@ -30,6 +24,11 @@ use self::{
     matrix::MatrixDriver,
 };
 use crate::{room::Room, Result};
+use async_channel::{Receiver, Sender};
+use ruma::api::client::delayed_events::DelayParameters;
+use serde::de::{self, Deserialize, Deserializer, Visitor};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio_util::sync::{CancellationToken, DropGuard};
 
 mod capabilities;
 mod filter;
@@ -104,7 +103,8 @@ impl WidgetDriverHandle {
     ///
     /// Returns `false` if the widget driver is no longer running.
     pub async fn send(&self, message: String) -> bool {
-        self.from_widget_tx.send(message).await.is_ok()
+        let a = self.from_widget_tx.send(message).await.is_ok();
+        a
     }
 }
 
@@ -137,9 +137,9 @@ impl WidgetDriver {
         // - all responses from the Matrix driver
         // - all events from the Matrix driver, if subscribed
         let (incoming_msg_tx, mut incoming_msg_rx) = unbounded_channel();
-
         // Forward all of the incoming messages from the widget.
-        tokio::spawn({
+        // wasm_bindgen_futures::spawn_local({
+        matrix_sdk_common::executor::spawn_simple({
             let incoming_msg_tx = incoming_msg_tx.clone();
             let from_widget_rx = self.from_widget_rx.clone();
             async move {
@@ -148,6 +148,26 @@ impl WidgetDriver {
                 }
             }
         });
+
+        // matrix_sdk_common::executor::spawn({
+        //     info!("WIDGET_DRIVER a v1");
+        //     async {
+        //         info!("WIDGET_DRIVER b v1");
+        //     }
+        // });
+
+        // matrix_sdk_common::executor::spawn(async {
+        //     info!("WIDGET_DRIVER b v2");
+        // });
+
+        // let c = "test".to_string();
+        // matrix_sdk_common::executor::spawn({
+        //     let c = c.clone();
+        //     info!("WIDGET_DRIVER a v3, {}", c);
+        //     async move {
+        //         info!("WIDGET_DRIVER b v3 {}", c);
+        //     }
+        // });
 
         // Create widget API machine.
         let (mut widget_machine, initial_actions) = WidgetMachine::new(
@@ -259,7 +279,7 @@ impl WidgetDriver {
                 let mut matrix = matrix_driver.events();
                 let incoming_msg_tx = incoming_msg_tx.clone();
 
-                tokio::spawn(async move {
+                matrix_sdk_common::executor::spawn_simple(async move {
                     loop {
                         tokio::select! {
                             _ = stop_forwarding.cancelled() => {
