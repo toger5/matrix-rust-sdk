@@ -1431,7 +1431,7 @@ pub struct RoomInfo {
     /// Filled by calling [`Room::compute_display_name`]. It's automatically
     /// filled at start when creating a room, or on every successful sync.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) cached_display_name: Option<RoomDisplayName>,
+    pub cached_display_name: Option<RoomDisplayName>,
 
     /// Cached user defined notification mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]

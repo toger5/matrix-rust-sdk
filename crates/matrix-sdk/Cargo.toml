@@ -16,26 +16,41 @@ features = ["docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["e2e-encryption", "automatic-room-key-forwarding", "sqlite", "native-tls"]
-testing = ["matrix-sdk-sqlite?/testing", "matrix-sdk-indexeddb?/testing", "matrix-sdk-base/testing", "wiremock", "matrix-sdk-test", "assert_matches2"]
+default = [
+    "e2e-encryption",
+    "automatic-room-key-forwarding",
+    "sqlite",
+    "native-tls",
+]
+testing = [
+    "matrix-sdk-sqlite?/testing",
+    "matrix-sdk-indexeddb?/testing",
+    "matrix-sdk-base/testing",
+    "wiremock",
+    "matrix-sdk-test",
+    "assert_matches2",
+]
 
 e2e-encryption = [
     "matrix-sdk-base/e2e-encryption",
-    "matrix-sdk-sqlite?/crypto-store",        # activate crypto-store on sqlite if given
-    "matrix-sdk-indexeddb?/e2e-encryption",   # activate on indexeddb if given
+    "matrix-sdk-sqlite?/crypto-store",      # activate crypto-store on sqlite if given
+    "matrix-sdk-indexeddb?/e2e-encryption", # activate on indexeddb if given
 ]
 js = ["matrix-sdk-common/js", "matrix-sdk-base/js"]
 
 sqlite = [
     "dep:matrix-sdk-sqlite",
     "matrix-sdk-sqlite?/state-store",
-    "matrix-sdk-sqlite?/event-cache"
+    "matrix-sdk-sqlite?/event-cache",
 ]
 bundled-sqlite = ["sqlite", "matrix-sdk-sqlite?/bundled"]
 indexeddb = ["matrix-sdk-indexeddb/state-store"]
 
 qrcode = ["e2e-encryption", "matrix-sdk-base/qrcode"]
-automatic-room-key-forwarding = ["e2e-encryption", "matrix-sdk-base/automatic-room-key-forwarding"]
+automatic-room-key-forwarding = [
+    "e2e-encryption",
+    "matrix-sdk-base/automatic-room-key-forwarding",
+]
 markdown = ["ruma/markdown"]
 native-tls = ["reqwest/native-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
@@ -96,7 +111,7 @@ mime2ext = "0.1.53"
 once_cell = { workspace = true }
 percent-encoding = "2.3.1"
 pin-project-lite = { workspace = true }
-rand = { workspace = true , optional = true }
+rand = { workspace = true, optional = true }
 ruma = { workspace = true, features = [
     "rand",
     "unstable-msc2448",
@@ -126,6 +141,7 @@ zeroize = { workspace = true }
 gloo-timers = { workspace = true, features = ["futures"] }
 reqwest = { workspace = true, features = ["gzip", "http2"] }
 tokio = { workspace = true, features = ["macros"] }
+tokio-util = "0.7.13"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backoff = { version = "0.4.0", features = ["tokio"] }

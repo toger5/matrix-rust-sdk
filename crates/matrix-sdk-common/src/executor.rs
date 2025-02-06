@@ -15,9 +15,10 @@
 //! Abstraction over an executor so we can spawn tasks under WASM the same way
 //! we do usually.
 
+use std::future::Future;
+
 #[cfg(target_arch = "wasm32")]
 use std::{
-    future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -48,6 +49,24 @@ where
     });
 
     JoinHandle { remote_handle, abort_handle }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn spawn_simple<F>(future: F)
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    spawn(future);
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn spawn_simple<F>(future: F)
+where
+    F: Future<Output = ()> + 'static,
+{
+    // TODO check if this work or if we need it to be generic: Output = T
+    wasm_bindgen_futures::spawn_local(future);
 }
 
 #[cfg(target_arch = "wasm32")]
