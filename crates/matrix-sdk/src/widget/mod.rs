@@ -14,13 +14,14 @@
 
 //! Widget API implementation.
 
-use std::{fmt, time::Duration};
-
 use async_channel::{Receiver, Sender};
 use ruma::api::client::delayed_events::DelayParameters;
 use serde::de::{self, Deserialize, Deserializer, Visitor};
+use std::{fmt, time::Duration};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_util::sync::{CancellationToken, DropGuard};
+
+use crate::{room::Room, Result};
 
 use self::{
     machine::{
@@ -29,7 +30,6 @@ use self::{
     },
     matrix::MatrixDriver,
 };
-use crate::{room::Room, Result};
 
 mod capabilities;
 mod filter;
@@ -137,9 +137,8 @@ impl WidgetDriver {
         // - all responses from the Matrix driver
         // - all events from the Matrix driver, if subscribed
         let (incoming_msg_tx, mut incoming_msg_rx) = unbounded_channel();
-
         // Forward all of the incoming messages from the widget.
-        tokio::spawn({
+        matrix_sdk_common::executor::spawn({
             let incoming_msg_tx = incoming_msg_tx.clone();
             let from_widget_rx = self.from_widget_rx.clone();
             async move {
@@ -147,7 +146,9 @@ impl WidgetDriver {
                     let _ = incoming_msg_tx.send(IncomingMessage::WidgetMessage(msg));
                 }
             }
-        });
+        })
+        .await
+        .map_err(|_| ())?;
 
         // Create widget API machine.
         let (mut widget_machine, initial_actions) = WidgetMachine::new(
@@ -259,7 +260,7 @@ impl WidgetDriver {
                 let mut matrix = matrix_driver.events();
                 let incoming_msg_tx = incoming_msg_tx.clone();
 
-                tokio::spawn(async move {
+                matrix_sdk_common::executor::spawn(async move {
                     loop {
                         tokio::select! {
                             _ = stop_forwarding.cancelled() => {
@@ -273,7 +274,7 @@ impl WidgetDriver {
                             }
                         }
                     }
-                });
+                }).await.map_err(|_|())?;
             }
 
             Action::Unsubscribe => {
