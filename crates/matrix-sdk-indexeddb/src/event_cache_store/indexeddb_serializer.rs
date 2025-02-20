@@ -46,6 +46,12 @@ pub enum MaybeEncrypted {
     Unencrypted(String),
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct WrapperObject {
+    id: String,
+    value: MaybeEncrypted,
+}
+
 impl IndexeddbSerializer {
     pub fn new(store_cipher: Option<Arc<StoreCipher>>) -> Self {
         Self { store_cipher }
@@ -64,13 +70,13 @@ impl IndexeddbSerializer {
     ///
     /// This is faster than [`Self::serialize_value`] and reliably gives the
     /// same output for the same input, making it suitable for index keys.
-    // pub fn encode_key<T>(&self, table_name: &str, key: T) -> JsValue
-    // where
-    //     T: SafeEncode,
-    // {
-    //     self.encode_key_as_string(table_name, key).into()
-    // }
-    //
+    pub fn encode_key<T>(&self, table_name: &str, key: T) -> JsValue
+    where
+        T: SafeEncode,
+    {
+        self.encode_key_as_string(table_name, key).into()
+    }
+
     /// Hash the given key securely for the given tablename, using the store
     /// cipher.
     ///
@@ -116,6 +122,18 @@ impl IndexeddbSerializer {
     ) -> Result<JsValue, IndexeddbEventCacheStoreError> {
         let serialized = self.maybe_encrypt_value(value)?;
         Ok(serde_wasm_bindgen::to_value(&serialized)?)
+    }
+
+    pub fn serialize_into_object(
+        &self,
+        id: &str,
+        value: &impl Serialize,
+    ) -> Result<JsValue, IndexeddbEventCacheStoreError> {
+        let serialized = self.maybe_encrypt_value(value)?;
+
+        let res_obj = WrapperObject { id: id.to_string(), value: serialized };
+
+        Ok(serde_wasm_bindgen::to_value(&res_obj)?)
     }
 
     /// Encode the value for storage as a value in indexeddb.
@@ -211,6 +229,16 @@ impl IndexeddbSerializer {
 
         // Otherwise, fall back to the legacy deserializer.
         self.deserialize_legacy_value(value)
+    }
+
+    pub fn deserialize_into_object<T: DeserializeOwned>(
+        &self,
+        value: JsValue,
+    ) -> Result<T, IndexeddbEventCacheStoreError> {
+        let obj: WrapperObject = value.into_serde()?;
+        let deserialized: T = self.maybe_decrypt_value(obj.value)?;
+
+        Ok(deserialized)
     }
 
     /// Decode a value that was encoded with an old version of

@@ -48,6 +48,7 @@ pub async fn open_stores_with_name(
             .await?;
 
     let event_cache_store = open_event_cache_store(name, state_store.store_cipher.clone()).await?;
+    web_sys::console::log_1(&"🟢 Opened eventCacheStore".into());
 
     Ok((state_store, crypto_store, event_cache_store))
 }
@@ -73,10 +74,11 @@ pub async fn open_state_store(
 /// Create an ['IndexeddbEventCacheStore']
 #[cfg(feature = "event-cache-store")]
 pub async fn open_event_cache_store(
-    name: &str,
+    prefix: &str,
     store_cipher: Option<Arc<StoreCipher>>,
 ) -> Result<IndexeddbEventCacheStore, OpenStoreError> {
-    let mut builder = IndexeddbEventCacheStore::builder().name(name.to_owned());
+    let mut builder =
+        IndexeddbEventCacheStore::builder().name(format!("{prefix}-event-cache-store").to_owned());
     if let Some(store_cipher) = store_cipher {
         builder = builder.store_cipher(store_cipher);
     }
