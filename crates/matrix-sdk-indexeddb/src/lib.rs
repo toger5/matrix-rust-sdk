@@ -48,7 +48,6 @@ pub async fn open_stores_with_name(
             .await?;
 
     let event_cache_store = open_event_cache_store(name, state_store.store_cipher.clone()).await?;
-    web_sys::console::log_1(&"🟢 Opened eventCacheStore".into());
 
     Ok((state_store, crypto_store, event_cache_store))
 }
