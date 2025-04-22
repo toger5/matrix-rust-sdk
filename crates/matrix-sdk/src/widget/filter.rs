@@ -12,45 +12,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use ruma::events::{MessageLikeEventType, StateEventType, TimelineEventType};
+use ruma::{
+    events::{
+        AnyMessageLikeEventContent, AnyTimelineEvent, MessageLikeEventType, StateEventType,
+        TimelineEventType,
+    },
+    serde::Raw,
+};
 use serde::Deserialize;
+use tracing::debug;
 
-/// Different kinds of filters for timeline events.
+use super::machine::SendEventRequest;
+
+/// A Filter for Matrix events. That is used to decide
+/// if a given event can be sent to the widget and if a widgets
+/// is allowed to send an event to to a matrix room or not.
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum EventFilter {
+pub enum Filter {
     /// Filter for message-like events.
     MessageLike(MessageLikeEventFilter),
     /// Filter for state events.
     State(StateEventFilter),
 }
 
-impl EventFilter {
-    pub(super) fn matches(&self, matrix_event: &MatrixEventFilterInput) -> bool {
+impl Filter {
+    /// Checks if this filter matches with the given filter_input.
+    /// A filter input can be create by using the `From` trait on FilterInput
+    /// for [`Raw<AnyTimelineEvent>`] or [`SendEventRequest`].
+    pub(super) fn matches(&self, filter_input: &FilterInput) -> bool {
         match self {
-            EventFilter::MessageLike(message_filter) => message_filter.matches(matrix_event),
-            EventFilter::State(state_filter) => state_filter.matches(matrix_event),
+            Self::MessageLike(filter) => filter.matches(filter_input),
+            Self::State(filter) => filter.matches(filter_input),
         }
     }
-
-    pub(super) fn matches_state_event_with_any_state_key(
-        &self,
-        event_type: &StateEventType,
-    ) -> bool {
-        matches!(
-            self,
-            Self::State(filter) if filter.matches_state_event_with_any_state_key(event_type)
-        )
-    }
-
-    pub(super) fn matches_message_like_event_type(
-        &self,
-        event_type: &MessageLikeEventType,
-    ) -> bool {
-        matches!(
-            self,
-            Self::MessageLike(filter) if filter.matches_message_like_event_type(event_type)
-        )
+    /// Returns the event type that this filter is configured to match.
+    ///
+    /// This method provides a string representation of the event type
+    /// associated with the filter.
+    pub(super) fn filter_event_type(&self) -> String {
+        match self {
+            Self::MessageLike(filter) => filter.filter_event_type(),
+            Self::State(filter) => filter.filter_event_type(),
+        }
     }
 }
 
@@ -65,29 +69,25 @@ pub enum MessageLikeEventFilter {
 }
 
 impl MessageLikeEventFilter {
-    fn matches(&self, matrix_event: &MatrixEventFilterInput) -> bool {
-        if matrix_event.state_key.is_some() {
-            // State event doesn't match a message-like event filter.
+    fn matches(&self, filter_input: &FilterInput) -> bool {
+        let FilterInput::MessageLike(message_like_filter_input) = filter_input else {
             return false;
-        }
-
+        };
         match self {
-            MessageLikeEventFilter::WithType(event_type) => {
-                matrix_event.event_type == TimelineEventType::from(event_type.clone())
+            Self::WithType(filter_event_type) => {
+                &message_like_filter_input.event_type == filter_event_type
             }
-            MessageLikeEventFilter::RoomMessageWithMsgtype(msgtype) => {
-                matrix_event.event_type == TimelineEventType::RoomMessage
-                    && matrix_event.content.msgtype.as_ref() == Some(msgtype)
+            Self::RoomMessageWithMsgtype(msgtype) => {
+                message_like_filter_input.event_type == MessageLikeEventType::RoomMessage
+                    && message_like_filter_input.content.msgtype.as_ref() == Some(msgtype)
             }
         }
     }
 
-    fn matches_message_like_event_type(&self, event_type: &MessageLikeEventType) -> bool {
+    fn filter_event_type(&self) -> String {
         match self {
-            MessageLikeEventFilter::WithType(filter_event_type) => filter_event_type == event_type,
-            MessageLikeEventFilter::RoomMessageWithMsgtype(_) => {
-                event_type == &MessageLikeEventType::RoomMessage
-            }
+            Self::WithType(filter_event_type) => filter_event_type.to_string(),
+            Self::RoomMessageWithMsgtype(_) => MessageLikeEventType::RoomMessage.to_string(),
         }
     }
 }
@@ -103,39 +103,137 @@ pub enum StateEventFilter {
 }
 
 impl StateEventFilter {
-    fn matches(&self, matrix_event: &MatrixEventFilterInput) -> bool {
-        let Some(state_key) = &matrix_event.state_key else {
-            // Message-like event doesn't match a state event filter.
+    fn matches(&self, filter_input: &FilterInput) -> bool {
+        let FilterInput::State(state_filter_input) = filter_input else {
             return false;
         };
 
         match self {
-            StateEventFilter::WithType(event_type) => {
-                matrix_event.event_type == TimelineEventType::from(event_type.clone())
+            StateEventFilter::WithType(filter_type) => {
+                &state_filter_input.event_type == filter_type
             }
             StateEventFilter::WithTypeAndStateKey(event_type, filter_state_key) => {
-                matrix_event.event_type == TimelineEventType::from(event_type.clone())
-                    && state_key == filter_state_key
+                &state_filter_input.event_type == event_type
+                    && state_filter_input.state_key == *filter_state_key
             }
         }
     }
-
-    fn matches_state_event_with_any_state_key(&self, event_type: &StateEventType) -> bool {
-        matches!(self, Self::WithType(ty) if ty == event_type)
+    fn filter_event_type(&self) -> String {
+        match self {
+            Self::WithType(filter_event_type) => filter_event_type.to_string(),
+            Self::WithTypeAndStateKey(event_type, _) => event_type.to_string(),
+        }
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub(super) struct MatrixEventFilterInput {
-    #[serde(rename = "type")]
-    pub(super) event_type: TimelineEventType,
-    pub(super) state_key: Option<String>,
-    pub(super) content: MatrixEventContent,
+// Filter input:
+
+/// The input data for the filter. This can either be constructed from a
+/// [`Raw<AnyTimelineEvent>`] or a [`SendEventRequest`].
+#[derive(Debug)]
+pub enum FilterInput {
+    State(FilterInputState),
+    MessageLike(FilterInputMessageLike),
 }
 
+impl FilterInput {
+    pub fn message_like(event_type: String) -> Self {
+        Self::MessageLike(FilterInputMessageLike {
+            event_type: event_type.into(),
+            content: MessageLikeFilterEventContent { msgtype: None },
+        })
+    }
+
+    pub(super) fn message_with_msgtype(msgtype: String) -> Self {
+        Self::MessageLike(FilterInputMessageLike {
+            event_type: MessageLikeEventType::RoomMessage,
+            content: MessageLikeFilterEventContent { msgtype: Some(msgtype) },
+        })
+    }
+
+    pub fn state(event_type: String, state_key: String) -> Self {
+        Self::State(FilterInputState { event_type: event_type.into(), state_key })
+    }
+}
+
+/// Filter input data that is used for a [`FilterInput::State`] filter.
+#[derive(Debug, Deserialize)]
+pub struct FilterInputState {
+    #[serde(rename = "type")]
+    pub(super) event_type: StateEventType,
+    pub(super) state_key: String,
+}
+
+// Filter input message like:
 #[derive(Debug, Default, Deserialize)]
-pub(super) struct MatrixEventContent {
+pub(super) struct MessageLikeFilterEventContent {
     pub(super) msgtype: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct FilterInputMessageLike {
+    pub(super) event_type: MessageLikeEventType,
+    pub(super) content: MessageLikeFilterEventContent,
+}
+
+/// Create a filter input based on [`AnyTimelineEvent`].
+/// This will create a [`FilterInput::State`] or [`FilterInput::MessageLike`]
+/// depending on the event type.
+impl TryFrom<Raw<AnyTimelineEvent>> for FilterInput {
+    type Error = serde_json::Error;
+    fn try_from(raw_event: Raw<AnyTimelineEvent>) -> Result<Self, Self::Error> {
+        // make sure `raw_event` actually was a timeline event
+        let timeline_event = raw_event.deserialize()?;
+        match timeline_event {
+            AnyTimelineEvent::MessageLike(message_like) => {
+                let msgtype = if let Some(AnyMessageLikeEventContent::RoomMessage(r)) =
+                    message_like.original_content()
+                {
+                    Some(r.msgtype().to_owned())
+                } else {
+                    None
+                };
+                let input_content = FilterInputMessageLike {
+                    event_type: message_like.event_type(),
+                    content: MessageLikeFilterEventContent { msgtype },
+                };
+                Ok(FilterInput::MessageLike(input_content))
+            }
+            AnyTimelineEvent::State(s) => Ok(FilterInput::State(FilterInputState {
+                event_type: s.event_type(),
+                state_key: s.state_key().to_owned(),
+            })),
+        }
+    }
+}
+
+impl From<&SendEventRequest> for FilterInput {
+    fn from(request: &SendEventRequest) -> Self {
+        match &request.state_key {
+            None => match request.event_type {
+                TimelineEventType::RoomMessage => {
+                    if let Some(msgtype) =
+                        serde_json::from_str::<MessageLikeFilterEventContent>(request.content.get())
+                            .unwrap_or_else(|e| {
+                                debug!("Failed to deserialize event content for filter: {e}");
+                                // Fallback to empty content is safe because there is no filter
+                                // that matches with it when it otherwise wouldn't.
+                                Default::default()
+                            })
+                            .msgtype
+                    {
+                        FilterInput::message_with_msgtype(msgtype)
+                    } else {
+                        FilterInput::message_like(TimelineEventType::RoomMessage.to_string())
+                    }
+                }
+                _ => FilterInput::message_like(request.event_type.to_string()),
+            },
+            Some(state_key) => {
+                FilterInput::state(request.event_type.to_string(), state_key.to_string())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -143,231 +241,187 @@ mod tests {
     use ruma::events::{MessageLikeEventType, StateEventType, TimelineEventType};
 
     use super::{
-        EventFilter, MatrixEventContent, MatrixEventFilterInput, MessageLikeEventFilter,
-        StateEventFilter,
+        Filter, FilterInput, FilterInputMessageLike, MessageLikeEventFilter, StateEventFilter,
     };
+    use crate::widget::filter::MessageLikeFilterEventContent;
 
-    fn message_event(event_type: TimelineEventType) -> MatrixEventFilterInput {
-        MatrixEventFilterInput { event_type, state_key: None, content: Default::default() }
-    }
-
-    fn message_event_with_msgtype(
-        event_type: TimelineEventType,
-        msgtype: String,
-    ) -> MatrixEventFilterInput {
-        MatrixEventFilterInput {
-            event_type,
-            state_key: None,
-            content: MatrixEventContent { msgtype: Some(msgtype) },
-        }
-    }
-
-    fn state_event(event_type: TimelineEventType, state_key: String) -> MatrixEventFilterInput {
-        MatrixEventFilterInput {
-            event_type,
-            state_key: Some(state_key),
-            content: Default::default(),
-        }
+    fn message_event(event_type: MessageLikeEventType) -> FilterInput {
+        FilterInput::MessageLike(FilterInputMessageLike { event_type, content: Default::default() })
     }
 
     // Tests against an `m.room.message` filter with `msgtype = m.text`
-    fn room_message_text_event_filter() -> EventFilter {
-        EventFilter::MessageLike(MessageLikeEventFilter::RoomMessageWithMsgtype(
-            "m.text".to_owned(),
-        ))
+    fn room_message_text_event_filter() -> Filter {
+        Filter::MessageLike(MessageLikeEventFilter::RoomMessageWithMsgtype("m.text".to_owned()))
     }
 
     #[test]
-    fn text_event_filter_matches_text_event() {
-        assert!(room_message_text_event_filter().matches(&message_event_with_msgtype(
-            TimelineEventType::RoomMessage,
-            "m.text".to_owned()
-        )));
+    fn test_text_event_filter_matches_text_event() {
+        assert!(room_message_text_event_filter()
+            .matches(&FilterInput::message_with_msgtype("m.text".to_owned())));
     }
 
     #[test]
-    fn text_event_filter_does_not_match_image_event() {
-        assert!(!room_message_text_event_filter().matches(&message_event_with_msgtype(
-            TimelineEventType::RoomMessage,
-            "m.image".to_owned()
-        )));
+    fn test_text_event_filter_does_not_match_image_event() {
+        assert!(!room_message_text_event_filter()
+            .matches(&FilterInput::message_with_msgtype("m.image".to_owned())));
     }
 
     #[test]
-    fn text_event_filter_does_not_match_custom_event_with_msgtype() {
-        assert!(!room_message_text_event_filter().matches(&message_event_with_msgtype(
-            "io.element.message".into(),
-            "m.text".to_owned()
+    fn test_text_event_filter_does_not_match_custom_event_with_msgtype() {
+        assert!(!room_message_text_event_filter().matches(&FilterInput::MessageLike(
+            FilterInputMessageLike {
+                event_type: "io.element.message".into(),
+                content: MessageLikeFilterEventContent { msgtype: Some("m.text".to_owned()) }
+            }
         )));
     }
 
     // Tests against an `m.reaction` filter
-    fn reaction_event_filter() -> EventFilter {
-        EventFilter::MessageLike(MessageLikeEventFilter::WithType(MessageLikeEventType::Reaction))
+    fn reaction_event_filter() -> Filter {
+        Filter::MessageLike(MessageLikeEventFilter::WithType(MessageLikeEventType::Reaction))
     }
 
     #[test]
-    fn reaction_event_filter_matches_reaction() {
-        assert!(reaction_event_filter().matches(&message_event(TimelineEventType::Reaction)));
+    fn test_reaction_event_filter_matches_reaction() {
+        assert!(reaction_event_filter().matches(&message_event(MessageLikeEventType::Reaction)));
     }
 
     #[test]
-    fn reaction_event_filter_does_not_match_room_message() {
-        assert!(!reaction_event_filter().matches(&message_event_with_msgtype(
-            TimelineEventType::RoomMessage,
-            "m.text".to_owned()
-        )));
+    fn test_reaction_event_filter_does_not_match_room_message() {
+        assert!(!reaction_event_filter()
+            .matches(&FilterInput::message_with_msgtype("m.text".to_owned())));
     }
 
     #[test]
-    fn reaction_event_filter_does_not_match_state_event() {
-        assert!(!reaction_event_filter().matches(&state_event(
-            // Use the `m.reaction` event type to make sure the event would pass
-            // the filter without state event checks, even though in practice
-            // that event type won't be used for a state event.
-            TimelineEventType::Reaction,
-            "".to_owned()
-        )));
-    }
-
-    #[test]
-    fn reaction_event_filter_does_not_match_state_event_any_key() {
-        assert!(
-            !reaction_event_filter().matches_state_event_with_any_state_key(&"m.reaction".into())
-        );
+    fn test_reaction_event_filter_does_not_match_state_event_any_key() {
+        assert!(!reaction_event_filter()
+            .matches(&FilterInput::state("m.reaction".to_owned(), "".to_owned())));
     }
 
     // Tests against an `m.room.member` filter with `state_key = "@self:example.me"`
-    fn self_member_event_filter() -> EventFilter {
-        EventFilter::State(StateEventFilter::WithTypeAndStateKey(
+    fn self_member_event_filter() -> Filter {
+        Filter::State(StateEventFilter::WithTypeAndStateKey(
             StateEventType::RoomMember,
             "@self:example.me".to_owned(),
         ))
     }
 
     #[test]
-    fn self_member_event_filter_matches_self_member_event() {
-        assert!(self_member_event_filter()
-            .matches(&state_event(TimelineEventType::RoomMember, "@self:example.me".to_owned())));
+    fn test_self_member_event_filter_matches_self_member_event() {
+        assert!(self_member_event_filter().matches(&FilterInput::state(
+            TimelineEventType::RoomMember.to_string(),
+            "@self:example.me".to_owned()
+        )));
     }
 
     #[test]
-    fn self_member_event_filter_does_not_match_somebody_elses_member_event() {
-        assert!(!self_member_event_filter().matches(&state_event(
-            TimelineEventType::RoomMember,
+    fn test_self_member_event_filter_does_not_match_somebody_elses_member_event() {
+        assert!(!self_member_event_filter().matches(&FilterInput::state(
+            TimelineEventType::RoomMember.to_string(),
             "@somebody_else.example.me".to_owned()
         )));
     }
 
     #[test]
     fn self_member_event_filter_does_not_match_unrelated_state_event_with_same_state_key() {
-        assert!(!self_member_event_filter().matches(&state_event(
-            TimelineEventType::from("io.element.test_state_event"),
+        assert!(!self_member_event_filter().matches(&FilterInput::state(
+            TimelineEventType::from("io.element.test_state_event").to_string(),
             "@self.example.me".to_owned()
         )));
     }
 
     #[test]
-    fn self_member_event_filter_does_not_match_reaction_event() {
-        assert!(!self_member_event_filter().matches(&message_event(TimelineEventType::Reaction)));
+    fn test_self_member_event_filter_does_not_match_reaction_event() {
+        assert!(!self_member_event_filter().matches(&message_event(MessageLikeEventType::Reaction)));
     }
 
     #[test]
-    fn self_member_event_filter_only_matches_specific_state_key() {
+    fn test_self_member_event_filter_only_matches_specific_state_key() {
         assert!(!self_member_event_filter()
-            .matches_state_event_with_any_state_key(&StateEventType::RoomMember));
+            .matches(&FilterInput::state(StateEventType::RoomMember.to_string(), "".to_owned())));
     }
 
     // Tests against an `m.room.member` filter with any `state_key`.
-    fn member_event_filter() -> EventFilter {
-        EventFilter::State(StateEventFilter::WithType(StateEventType::RoomMember))
+    fn member_event_filter() -> Filter {
+        Filter::State(StateEventFilter::WithType(StateEventType::RoomMember))
     }
 
     #[test]
-    fn member_event_filter_matches_some_member_event() {
-        assert!(member_event_filter()
-            .matches(&state_event(TimelineEventType::RoomMember, "@foo.bar.baz".to_owned())));
+    fn test_member_event_filter_matches_some_member_event() {
+        assert!(member_event_filter().matches(&FilterInput::state(
+            TimelineEventType::RoomMember.to_string(),
+            "@foo.bar.baz".to_owned()
+        )));
     }
 
     #[test]
-    fn member_event_filter_does_not_match_room_name_event() {
+    fn test_member_event_filter_does_not_match_room_name_event() {
         assert!(!member_event_filter()
-            .matches(&state_event(TimelineEventType::RoomName, "".to_owned())));
+            .matches(&FilterInput::state(TimelineEventType::RoomName.to_string(), "".to_owned())));
     }
 
     #[test]
-    fn member_event_filter_does_not_match_reaction_event() {
-        assert!(!member_event_filter().matches(&message_event(TimelineEventType::Reaction)));
+    fn test_member_event_filter_does_not_match_reaction_event() {
+        assert!(!member_event_filter().matches(&message_event(MessageLikeEventType::Reaction)));
     }
 
     #[test]
-    fn member_event_filter_matches_any_state_key() {
+    fn test_member_event_filter_matches_any_state_key() {
         assert!(member_event_filter()
-            .matches_state_event_with_any_state_key(&StateEventType::RoomMember));
+            .matches(&FilterInput::state(StateEventType::RoomMember.to_string(), "".to_owned())));
     }
 
     // Tests against an `m.room.topic` filter with `state_key = ""`
-    fn topic_event_filter() -> EventFilter {
-        EventFilter::State(StateEventFilter::WithTypeAndStateKey(
+    fn topic_event_filter() -> Filter {
+        Filter::State(StateEventFilter::WithTypeAndStateKey(
             StateEventType::RoomTopic,
             "".to_owned(),
         ))
     }
 
     #[test]
-    fn topic_event_filter_does_not_match_any_state_key() {
-        assert!(!topic_event_filter()
-            .matches_state_event_with_any_state_key(&StateEventType::RoomTopic));
+    fn test_topic_event_filter_does_match() {
+        assert!(topic_event_filter()
+            .matches(&FilterInput::state(StateEventType::RoomTopic.to_string(), "".to_owned())));
     }
 
     // Tests against an `m.room.message` filter with `msgtype = m.custom`
-    fn room_message_custom_event_filter() -> EventFilter {
-        EventFilter::MessageLike(MessageLikeEventFilter::RoomMessageWithMsgtype(
-            "m.custom".to_owned(),
-        ))
+    fn room_message_custom_event_filter() -> Filter {
+        Filter::MessageLike(MessageLikeEventFilter::RoomMessageWithMsgtype("m.custom".to_owned()))
     }
 
     // Tests against an `m.room.message` filter without a `msgtype`
-    fn room_message_filter() -> EventFilter {
-        EventFilter::MessageLike(MessageLikeEventFilter::WithType(
-            MessageLikeEventType::RoomMessage,
-        ))
+    fn room_message_filter() -> Filter {
+        Filter::MessageLike(MessageLikeEventFilter::WithType(MessageLikeEventType::RoomMessage))
     }
 
     #[test]
-    fn room_message_event_type_matches_room_message_text_event_filter() {
-        assert!(room_message_text_event_filter()
-            .matches_message_like_event_type(&MessageLikeEventType::RoomMessage));
-    }
-
-    #[test]
-    fn reaction_event_type_does_not_match_room_message_text_event_filter() {
+    fn test_reaction_event_type_does_not_match_room_message_text_event_filter() {
         assert!(!room_message_text_event_filter()
-            .matches_message_like_event_type(&MessageLikeEventType::Reaction));
+            .matches(&FilterInput::message_like(MessageLikeEventType::Reaction.to_string())));
     }
 
     #[test]
-    fn room_message_event_type_matches_room_message_custom_event_filter() {
-        assert!(room_message_custom_event_filter()
-            .matches_message_like_event_type(&MessageLikeEventType::RoomMessage));
-    }
-
-    #[test]
-    fn reaction_event_type_does_not_match_room_message_custom_event_filter() {
+    fn test_room_message_event_without_msgtype_does_not_match_custom_msgtype_filter() {
         assert!(!room_message_custom_event_filter()
-            .matches_message_like_event_type(&MessageLikeEventType::Reaction));
+            .matches(&FilterInput::message_like(MessageLikeEventType::RoomMessage.to_string())));
     }
 
     #[test]
-    fn room_message_event_type_matches_room_message_event_filter() {
+    fn test_reaction_event_type_does_not_match_room_message_custom_event_filter() {
+        assert!(!room_message_custom_event_filter()
+            .matches(&FilterInput::message_like(MessageLikeEventType::Reaction.to_string())));
+    }
+
+    #[test]
+    fn test_room_message_event_type_matches_room_message_event_filter() {
         assert!(room_message_filter()
-            .matches_message_like_event_type(&MessageLikeEventType::RoomMessage));
+            .matches(&FilterInput::message_like(MessageLikeEventType::RoomMessage.to_string())));
     }
 
     #[test]
-    fn reaction_event_type_does_not_match_room_message_event_filter() {
-        assert!(
-            !room_message_filter().matches_message_like_event_type(&MessageLikeEventType::Reaction)
-        );
+    fn test_reaction_event_type_does_not_match_room_message_event_filter() {
+        assert!(!room_message_filter()
+            .matches(&FilterInput::message_like(MessageLikeEventType::Reaction.to_string())));
     }
 }
