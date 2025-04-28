@@ -164,19 +164,17 @@ impl WidgetMachine {
             IncomingMessage::MatrixDriverResponse { request_id, response } => {
                 self.process_matrix_driver_response(request_id, response)
             }
-            IncomingMessage::MatrixEventReceived(event_raw) => {
+            IncomingMessage::MatrixEventReceived(event) => {
                 let CapabilitiesState::Negotiated(capabilities) = &self.capabilities else {
                     error!("Received matrix event before capabilities negotiation");
                     return Vec::new();
                 };
-                let Ok(event_filter_in) = event_raw.clone().try_into() else {
-                    error!("Failed to convert event to filter input");
-                    return Vec::new();
-                };
-                if capabilities.allow_reading(&event_filter_in) {
-                    let action = self.send_to_widget_request(NotifyNewMatrixEvent(event_raw)).1;
+
+                if capabilities.allow_reading(&event) {
+                    let action = self.send_to_widget_request(NotifyNewMatrixEvent(event)).1;
                     return action.map(|a| vec![a]).unwrap_or_default();
                 }
+
                 Vec::new()
             }
         }
@@ -342,9 +340,7 @@ impl WidgetMachine {
                         }
                         CapabilitiesState::Negotiated(capabilities) => result
                             .map(|mut events| {
-                                events.retain(|e|
-                                    matches!(e.clone().try_into(), Ok(f_in) if capabilities.allow_reading(&f_in))
-                                );
+                                events.retain(|e| capabilities.allow_reading(e));
                                 ReadEventResponse { events }
                             })
                             .map_err(FromWidgetErrorResponse::from_error),
@@ -368,7 +364,7 @@ impl WidgetMachine {
                     // the capability to read this specific state key and otherwise
                     // skip sending the request.
                     StateKeySelector::Key(state_key) => capabilities
-                        .allow_reading(&FilterInput::state(event_type.to_string(), state_key)),
+                        .allow_reading(FilterInput::state(event_type.to_string(), state_key)),
                 };
                 if allowed {
                     let request = ReadStateEventRequest { event_type, state_key };
@@ -407,7 +403,7 @@ impl WidgetMachine {
             ));
         }
 
-        if !capabilities.allow_sending(&(&request).into()) {
+        if !capabilities.allow_sending(&request) {
             return Some(Self::send_from_widget_error_string_response(
                 raw_request,
                 "Not allowed to send event",

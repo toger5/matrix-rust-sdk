@@ -179,9 +179,9 @@ pub struct FilterInputMessageLike {
 /// Create a filter input based on [`AnyTimelineEvent`].
 /// This will create a [`FilterInput::State`] or [`FilterInput::MessageLike`]
 /// depending on the event type.
-impl TryFrom<Raw<AnyTimelineEvent>> for FilterInput {
+impl TryFrom<&Raw<AnyTimelineEvent>> for FilterInput {
     type Error = serde_json::Error;
-    fn try_from(raw_event: Raw<AnyTimelineEvent>) -> Result<Self, Self::Error> {
+    fn try_from(raw_event: &Raw<AnyTimelineEvent>) -> Result<Self, Self::Error> {
         // make sure `raw_event` actually was a timeline event
         let timeline_event = raw_event.deserialize()?;
         match timeline_event {

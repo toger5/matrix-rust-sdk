@@ -58,13 +58,16 @@ pub struct Capabilities {
 }
 
 impl Capabilities {
-    /// Checks if a givent event is allowed to be forwarded to the widget.
+    /// Checks if a given event is allowed to be forwarded to the widget.
     ///
     /// - `event_filter_input` is a minimized event respresntation that contains
     ///   only the information needed to check if the widget is allowed to
     ///   receive the event. (See [`FilterInput`])
-    pub(super) fn allow_reading(&self, event_filter_input: &FilterInput) -> bool {
-        self.read.iter().any(|f| f.matches(event_filter_input))
+    pub(super) fn allow_reading(&self, event_filter_input: impl TryInto<FilterInput>) -> bool {
+        match &event_filter_input.try_into() {
+            Err(_) => false,
+            Ok(filter_input) => self.read.iter().any(|f| f.matches(&filter_input)),
+        }
     }
 
     /// Checks if a givent event is allowed to be sent by the widget.
@@ -72,8 +75,11 @@ impl Capabilities {
     /// - `event_filter_input` is a minimized event respresntation that contains
     ///   only the information needed to check if the widget is allowed to send
     ///   the event to a matrix room. (See [`FilterInput`])
-    pub(super) fn allow_sending(&self, event_filter_input: &FilterInput) -> bool {
-        self.send.iter().any(|f| f.matches(event_filter_input))
+    pub(super) fn allow_sending(&self, event_filter_input: impl TryInto<FilterInput>) -> bool {
+        match &event_filter_input.try_into() {
+            Err(_) => false,
+            Ok(filter_input) => self.send.iter().any(|f| f.matches(filter_input)),
+        }
     }
 
     /// Checks if a filter exists for the given event type, useful for
