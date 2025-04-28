@@ -130,84 +130,87 @@ impl StateEventFilter {
 
 /// The input data for the filter. This can either be constructed from a
 /// [`Raw<AnyTimelineEvent>`] or a [`SendEventRequest`].
-#[derive(Debug)]
-pub enum FilterInput {
-    State(FilterInputState),
-    MessageLike(FilterInputMessageLike),
+#[derive(Debug, Deserialize)]
+pub enum FilterInput<'a> {
+    State(FilterInputState<'a>),
+    MessageLike(FilterInputMessageLike<'a>),
 }
 
-impl FilterInput {
-    pub fn message_like(event_type: String) -> Self {
+impl<'a> FilterInput<'a> {
+    pub fn message_like(event_type: &'a str) -> Self {
         Self::MessageLike(FilterInputMessageLike {
-            event_type: event_type.into(),
+            event_type: event_type,
             content: MessageLikeFilterEventContent { msgtype: None },
         })
     }
 
-    pub(super) fn message_with_msgtype(msgtype: String) -> Self {
+    pub(super) fn message_with_msgtype(msgtype: &'a str) -> Self {
         Self::MessageLike(FilterInputMessageLike {
-            event_type: MessageLikeEventType::RoomMessage,
+            event_type: &"m.room.message",
             content: MessageLikeFilterEventContent { msgtype: Some(msgtype) },
         })
     }
 
-    pub fn state(event_type: String, state_key: String) -> Self {
-        Self::State(FilterInputState { event_type: event_type.into(), state_key })
+    pub fn state(event_type: &'a str, state_key: &'a str) -> Self {
+        Self::State(FilterInputState { event_type: event_type, state_key })
     }
 }
 
 /// Filter input data that is used for a [`FilterInput::State`] filter.
 #[derive(Debug, Deserialize)]
-pub struct FilterInputState {
+pub struct FilterInputState<'a> {
     #[serde(rename = "type")]
-    pub(super) event_type: StateEventType,
-    pub(super) state_key: String,
+    pub(super) event_type: &'a str,
+
+    pub(super) state_key: &'a str,
 }
 
 // Filter input message like:
 #[derive(Debug, Default, Deserialize)]
-pub(super) struct MessageLikeFilterEventContent {
-    pub(super) msgtype: Option<String>,
+pub(super) struct MessageLikeFilterEventContent<'a> {
+    #[serde(borrow)]
+    pub(super) msgtype: Option<&'a str>,
 }
 
-#[derive(Debug)]
-pub struct FilterInputMessageLike {
-    pub(super) event_type: MessageLikeEventType,
-    pub(super) content: MessageLikeFilterEventContent,
+#[derive(Debug, Deserialize)]
+pub struct FilterInputMessageLike<'a> {
+    pub(super) event_type: &'a str,
+    pub(super) content: MessageLikeFilterEventContent<'a>,
 }
 
 /// Create a filter input based on [`AnyTimelineEvent`].
 /// This will create a [`FilterInput::State`] or [`FilterInput::MessageLike`]
 /// depending on the event type.
-impl TryFrom<&Raw<AnyTimelineEvent>> for FilterInput {
+impl<'a> TryFrom<&'a Raw<AnyTimelineEvent>> for FilterInput<'a> {
     type Error = serde_json::Error;
     fn try_from(raw_event: &Raw<AnyTimelineEvent>) -> Result<Self, Self::Error> {
         // make sure `raw_event` actually was a timeline event
-        let timeline_event = raw_event.deserialize()?;
-        match timeline_event {
-            AnyTimelineEvent::MessageLike(message_like) => {
-                let msgtype = if let Some(AnyMessageLikeEventContent::RoomMessage(r)) =
-                    message_like.original_content()
-                {
-                    Some(r.msgtype().to_owned())
-                } else {
-                    None
-                };
-                let input_content = FilterInputMessageLike {
-                    event_type: message_like.event_type(),
-                    content: MessageLikeFilterEventContent { msgtype },
-                };
-                Ok(FilterInput::MessageLike(input_content))
-            }
-            AnyTimelineEvent::State(s) => Ok(FilterInput::State(FilterInputState {
-                event_type: s.event_type(),
-                state_key: s.state_key().to_owned(),
-            })),
-        }
+        // let timeline_event = raw_event.deserialize()?;
+        // match timeline_event {
+        //     AnyTimelineEvent::MessageLike(message_like) => {
+        //         let msgtype = if let Some(AnyMessageLikeEventContent::RoomMessage(r)) =
+        //             message_like.original_content()
+        //         {
+        //             Some(r.msgtype())
+        //         } else {
+        //             None
+        //         };
+        //         let input_content = FilterInputMessageLike {
+        //             event_type: &message_like.event_type(),
+        //             content: MessageLikeFilterEventContent { msgtype },
+        //         };
+        //         Ok(FilterInput::MessageLike(input_content))
+        //     }
+        //     AnyTimelineEvent::State(s) => Ok(FilterInput::State(FilterInputState {
+        //         event_type: &s.event_type().into(),
+        //         state_key: s.state_key(),
+        //     })),
+        // }
+        raw_event.deserialize_as()
     }
 }
 
-impl From<&SendEventRequest> for FilterInput {
+impl<'a> From<&'a SendEventRequest> for FilterInput<'a> {
     fn from(request: &SendEventRequest) -> Self {
         match &request.state_key {
             None => match request.event_type {
