@@ -24,9 +24,9 @@ use tracing::debug;
 
 use super::machine::SendEventRequest;
 
-/// A Filter for Matrix events. That is used to decide
-/// if a given event can be sent to the widget and if a widgets
-/// is allowed to send an event to to a matrix room or not.
+/// A Filter for Matrix events. That is used to decide if a given event can be
+/// sent to the widget and if a widgets is allowed to send an event to to a
+/// Matrix room or not.
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Filter {
