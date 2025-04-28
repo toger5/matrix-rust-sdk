@@ -216,8 +216,11 @@ impl From<&SendEventRequest> for FilterInput {
                         serde_json::from_str::<MessageLikeFilterEventContent>(request.content.get())
                             .unwrap_or_else(|e| {
                                 debug!("Failed to deserialize event content for filter: {e}");
-                                // Fallback to empty content is safe because there is no filter
-                                // that matches with it when it otherwise wouldn't.
+                                // Fallback to empty content is safe.
+                                // If we do have a filter matching any content type, it will march
+                                // independent of the body.
+                                // Any filter that does only match a specific content type will not
+                                // match the empty content.
                                 Default::default()
                             })
                             .msgtype
